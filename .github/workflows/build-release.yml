@@ -48,26 +48,23 @@ jobs:
           /tmp/gradle-8.4/bin/gradle wrapper --gradle-version 8.4
           rm -rf /tmp/gradle.zip /tmp/gradle-8.4
 
-      - name: Generate keystore
+      - name: Build Release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'appclone' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'appclone123' }}
         run: |
           keytool -genkeypair \
             -v \
             -keystore release.keystore \
-            -alias appclone \
+            -alias "${{ secrets.KEY_ALIAS || 'appclone' }}" \
             -keyalg RSA \
             -keysize 4096 \
             -validity 10000 \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}" \
-            -keypass "${{ secrets.KEY_PASSWORD || 'appclone123' }}" \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
             -dname "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN"
-
-      - name: Build Release APK
-        env:
-          KEYSTORE_PATH: release.keystore
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'appclone' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'appclone123' }}
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Verify APK signature (v1+v2+v3)
         run: |
