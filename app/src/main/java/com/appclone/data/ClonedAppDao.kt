@@ -1,18 +1,18 @@
 package com.appclone.data
 
-import androidx.lifecycle.LiveData
 import androidx.room.*
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ClonedAppDao {
     @Query("SELECT * FROM cloned_apps ORDER BY lastUsedDate DESC")
-    fun getAllClonedApps(): LiveData<List<ClonedApp>>
+    fun getAllClonedApps(): Flow<List<ClonedApp>>
 
     @Query("SELECT * FROM cloned_apps ORDER BY cloneDate DESC")
     suspend fun getAllClonedAppsSync(): List<ClonedApp>
 
     @Query("SELECT * FROM cloned_apps WHERE packageName = :packageName")
-    fun getByPackage(packageName: String): LiveData<List<ClonedApp>>
+    fun getByPackage(packageName: String): Flow<List<ClonedApp>>
 
     @Query("SELECT * FROM cloned_apps WHERE id = :id")
     suspend fun getById(id: Int): ClonedApp?

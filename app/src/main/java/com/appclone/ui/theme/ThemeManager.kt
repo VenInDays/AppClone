@@ -23,7 +23,7 @@ object ThemeManager {
     @RequiresApi(Build.VERSION_CODES.S)
     fun applyDynamicColors(context: Context) {
         if (DynamicColors.isDynamicColorAvailable()) {
-            DynamicColors.applyToActivitiesIfAvailable(context as? android.app.Activity)
+            DynamicColors.applyToActivitiesIfAvailable(context.applicationContext)
             useDynamicColors = true
         }
     }

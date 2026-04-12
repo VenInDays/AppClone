@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -64,12 +65,6 @@ class AppListFragment : Fragment() {
                 false
             }
         }
-
-        binding.searchInput.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus && binding.searchInput.text.isNullOrEmpty()) {
-                viewModel.loadPopularApps()
-            }
-        }
     }
 
     private fun setupObservers() {
@@ -91,11 +86,12 @@ class AppListFragment : Fragment() {
             viewModel.events.collect { event ->
                 when (event) {
                     is AppListViewModel.Event.ShowMessage -> {
-                        binding.snackbarHost.showSnackbar(event.message)
+                        Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
                     }
                     is AppListViewModel.Event.NavigateToClone -> {
                         // Navigate to clone detail
                     }
+                    is AppListViewModel.Event.None -> { /* no-op */ }
                 }
             }
         }

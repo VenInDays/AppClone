@@ -4,12 +4,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.appclone.R
 import com.appclone.databinding.FragmentClonedAppsBinding
 import com.appclone.ui.adapters.ClonedAppAdapter
 import com.appclone.ui.viewmodel.ClonedAppsViewModel
@@ -66,7 +66,7 @@ class ClonedAppsFragment : Fragment() {
 
         lifecycleScope.launch {
             viewModel.clonedCount.collect { count ->
-                binding.toolbar.subtitle = "$count clone${if (count != 1) "s" else ""} đang chạy"
+                binding.toolbar.subtitle = "$count clone${if (count != 1) "s" else ""} dang chay"
             }
         }
 
@@ -74,8 +74,9 @@ class ClonedAppsFragment : Fragment() {
             viewModel.events.collect { event ->
                 when (event) {
                     is ClonedAppsViewModel.Event.ShowMessage -> {
-                        binding.snackbarHost.showSnackbar(event.message)
+                        Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
                     }
+                    is ClonedAppsViewModel.Event.None -> { /* no-op */ }
                 }
             }
         }
