@@ -4,6 +4,7 @@ import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.UserManager;
 import android.util.Log;
@@ -141,9 +142,13 @@ public class ProfileManager {
         if (!isProfileOwner()) return cloned;
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                List<String> apps = dpm.getInstalledApplications(getAdminComponent(), 0);
-                if (apps != null) {
-                    cloned.addAll(apps);
+                // Use PackageManager to get installed apps
+                android.content.pm.PackageManager pm = context.getPackageManager();
+                java.util.List<android.content.pm.ApplicationInfo> apps = pm.getInstalledApplications(0);
+                for (android.content.pm.ApplicationInfo info : apps) {
+                    if ((info.flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0) {
+                        cloned.add(info.packageName);
+                    }
                 }
             }
         } catch (Exception e) {

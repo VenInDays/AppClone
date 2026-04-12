@@ -110,7 +110,7 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <com.google.android.material.snackbar.SnackbarHost
+    <FrameLayout
         android:id="@+id/snackbarHost"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
