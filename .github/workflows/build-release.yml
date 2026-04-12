@@ -41,9 +41,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create Gradle Wrapper
+      - name: Download Gradle Wrapper
         run: |
-          gradle wrapper --gradle-version 8.4
+          wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp/
+          /tmp/gradle-8.4/bin/gradle wrapper --gradle-version 8.4
+          rm -rf /tmp/gradle.zip /tmp/gradle-8.4
 
       - name: Generate keystore
         run: |
