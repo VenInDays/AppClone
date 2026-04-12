@@ -12,7 +12,6 @@ object ThemeManager {
     }
 
     private var currentThemeMode = ThemeMode.SYSTEM
-    private var useDynamicColors = false
 
     fun setThemeMode(mode: ThemeMode) {
         currentThemeMode = mode
@@ -21,10 +20,11 @@ object ThemeManager {
     fun getThemeMode(): ThemeMode = currentThemeMode
 
     @RequiresApi(Build.VERSION_CODES.S)
-    fun applyDynamicColors(context: Context) {
+    fun applyDynamicColors(applicationContext: Context) {
         if (DynamicColors.isDynamicColorAvailable()) {
-            DynamicColors.applyToActivitiesIfAvailable(context.applicationContext)
-            useDynamicColors = true
+            if (applicationContext is android.app.Application) {
+                DynamicColors.applyToActivitiesIfAvailable(applicationContext)
+            }
         }
     }
 
