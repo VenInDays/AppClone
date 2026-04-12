@@ -49,14 +49,14 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "release.keystore"
-            val keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: "appclone123"
-            val keyAlias = System.getenv("KEY_ALIAS") ?: "appclone"
-            val keyPassword = System.getenv("KEY_PASSWORD") ?: "appclone123"
-            storeFile = file(keystorePath)
-            storePassword = keystorePassword
-            keyAlias = keyAlias
-            keyPassword = keyPassword
+            val ksPath = System.getenv("KEYSTORE_PATH") ?: "release.keystore"
+            val ksPass = System.getenv("KEYSTORE_PASSWORD") ?: "appclone123"
+            val ksAlias = System.getenv("KEY_ALIAS") ?: "appclone"
+            val ksKeyPass = System.getenv("KEY_PASSWORD") ?: "appclone123"
+            storeFile = file(ksPath)
+            storePassword = ksPass
+            this.keyAlias = ksAlias
+            this.keyPassword = ksKeyPass
         }
     }
 
@@ -79,7 +79,8 @@ android {
     applicationVariants.all {
         val variant = this
         variant.outputs.all {
-            outputFileName = "AppClone-${variant.versionName}-${variant.buildType.name}.apk"
+            (this as com.android.build.gradle.internal.api.ApkVariantOutputImpl).outputFileName =
+                "AppClone-${variant.versionName}-${variant.buildType.name}.apk"
         }
     }
 }
