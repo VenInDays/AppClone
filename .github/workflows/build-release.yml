@@ -49,55 +49,56 @@ jobs:
           rm -rf /tmp/gradle.zip /tmp/gradle-8.4
 
       - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Sign APK with v1+v2+v3+v4
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'appclone' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'appclone123' }}
         run: |
+          BUILD_TOOLS=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)
+
+          # Generate keystore
           keytool -genkeypair \
             -v \
             -keystore release.keystore \
-            -alias "${{ secrets.KEY_ALIAS || 'appclone' }}" \
+            -alias "$KEY_ALIAS" \
             -keyalg RSA \
             -keysize 4096 \
             -validity 10000 \
             -storepass "$KEYSTORE_PASSWORD" \
             -keypass "$KEY_PASSWORD" \
             -dname "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN"
-          ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Verify APK signature (v1+v2+v3)
-        run: |
-          echo "=== Verifying APK signatures ==="
-          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)/apksigner verify --print-certs --verbose app/build/outputs/apk/release/*.apk
-          echo "=== Checking signature schemes ==="
-          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)/apksigner verify -v app/build/outputs/apk/release/*.apk || true
+          # Find APK (could be signed or unsigned depending on config)
+          APK=$(find app/build/outputs/apk/release/ -name "*.apk" | head -1)
+          echo "Found APK: $APK"
 
-      - name: Sign APK with v1+v2+v3 (explicit)
-        run: |
-          BUILD_TOOLS=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)
-          UNSIGNED_APK=$(ls app/build/outputs/apk/release/*-release-unsigned.apk 2>/dev/null || ls app/build/outputs/apk/release/*.apk | head -1)
-          SIGNED_APK="AppClone-signed.apk"
+          # If APK is already signed, skip re-signing
+          if $BUILD_TOOLS/apksigner verify "$APK" 2>/dev/null; then
+            echo "APK already signed, copying..."
+            cp "$APK" AppClone-signed.apk
+          else
+            echo "Signing unsigned APK..."
+            $BUILD_TOOLS/zipalign -f -v 4 "$APK" AppClone-aligned.apk
+            $BUILD_TOOLS/apksigner sign \
+              --ks release.keystore \
+              --ks-pass "pass:$KEYSTORE_PASSWORD" \
+              --ks-key-alias "$KEY_ALIAS" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              --v1-signing-enabled true \
+              --v2-signing-enabled true \
+              --v3-signing-enabled true \
+              --v4-signing-enabled true \
+              --out AppClone-signed.apk \
+              AppClone-aligned.apk
+            rm -f AppClone-aligned.apk
+          fi
 
-          # Align the APK
-          $BUILD_TOOLS/zipalign -f -v 4 "$UNSIGNED_APK" "$SIGNED_APK"
-
-          # Sign with v1 + v2 + v3
-          $BUILD_TOOLS/apksigner sign \
-            --ks release.keystore \
-            --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}" \
-            --ks-key-alias "${{ secrets.KEY_ALIAS || 'appclone' }}" \
-            --key-pass "pass:${{ secrets.KEY_PASSWORD || 'appclone123' }}" \
-            --v1-signing-enabled true \
-            --v2-signing-enabled true \
-            --v3-signing-enabled true \
-            --v4-signing-enabled true \
-            --out "$SIGNED_APK" \
-            "$SIGNED_APK"
-
-          echo "=== Final Signature Verification ==="
-          $BUILD_TOOLS/apksigner verify --print-certs --verbose "$SIGNED_APK"
-          echo "APK signed successfully with v1+v2+v3+v4!"
+          echo "=== Final Verification ==="
+          $BUILD_TOOLS/apksigner verify --print-certs --verbose AppClone-signed.apk
+          echo "=== DONE: APK signed with v1+v2+v3+v4 ==="
 
       - name: Get version info
         id: version
