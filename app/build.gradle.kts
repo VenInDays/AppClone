@@ -79,8 +79,7 @@ android {
     applicationVariants.all {
         val variant = this
         variant.outputs.all {
-            val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-            output.outputFileName = "AppClone-${variant.versionName}-${variant.buildType.name}.apk"
+            outputFileName = "AppClone-${variant.versionName}-${variant.buildType.name}.apk"
         }
     }
 }
