@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AppClone</string>
+    <string name="tab_apps">Ứng dụng</string>
+    <string name="tab_clones">Đã Clone</string>
+    <string name="tab_settings">Cài đặt</string>
+    <string name="search_hint">Tìm ứng dụng để clone…</string>
+    <string name="clone">Clone</string>
+    <string name="delete">Xóa</string>
+    <string name="launch">Mở</string>
+    <string name="settings">Cài đặt</string>
+    <string name="no_apps_found">Không tìm thấy ứng dụng nào</string>
+    <string name="no_clones_found">Chưa có ứng dụng nào được clone</string>
+    <string name="clone_success">Đã clone thành công!</string>
+    <string name="clone_failed">Clone thất bại</string>
+    <string name="delete_clone_confirm">Bạn có chắc muốn xóa clone này không?</string>
+    <string name="setup_profile_title">Thiết lập ban đầu</string>
+    <string name="setup_profile_message">Để sử dụng AppClone, bạn cần kích hoạt hồ sơ làm việc. Điều này cho phép chạy ứng dụng trong không gian riêng biệt.</string>
+    <string name="setup_profile_button">Thiết lập</string>
+    <string name="popular_apps">Ứng dụng phổ biến</string>
+    <string name="all_apps">Tất cả ứng dụng</string>
+    <string name="messaging">Nhắn tin</string>
+    <string name="social">Mạng xã hội</string>
+    <string name="version">Phiên bản %1$s</string>
+    <string name="clone_count">%d clone</string>
+    <string name="confirm_delete_all">Bạn có chắc muốn xóa TẤT CẢ các clone không? Hành động này không thể hoàn tác.</string>
+    <string name="storage_used">Dung lượng: %s</string>
+    <string name="notification_channel_name">Thông báo Clone</string>
+    <string name="notification_channel_desc">Thông báo từ các ứng dụng đã clone</string>
+    <string name="profile_not_set_up">Hồ sơ làm việc chưa được thiết lập</string>
+    <string name="clear_cache">Xóa cache</string>
+    <string name="clear_all">Xóa tất cả clone</string>
+</resources>

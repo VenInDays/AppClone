@@ -1,0 +1,160 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Create Gradle Wrapper
+        run: |
+          gradle wrapper --gradle-version 8.4
+
+      - name: Generate keystore
+        run: |
+          keytool -genkeypair \
+            -v \
+            -keystore release.keystore \
+            -alias appclone \
+            -keyalg RSA \
+            -keysize 4096 \
+            -validity 10000 \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}" \
+            -keypass "${{ secrets.KEY_PASSWORD || 'appclone123' }}" \
+            -dname "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN"
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_PATH: release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'appclone' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'appclone123' }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Verify APK signature (v1+v2+v3)
+        run: |
+          echo "=== Verifying APK signatures ==="
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)/apksigner verify --print-certs --verbose app/build/outputs/apk/release/*.apk
+          echo "=== Checking signature schemes ==="
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)/apksigner verify -v app/build/outputs/apk/release/*.apk || true
+
+      - name: Sign APK with v1+v2+v3 (explicit)
+        run: |
+          BUILD_TOOLS=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)
+          UNSIGNED_APK=$(ls app/build/outputs/apk/release/*-release-unsigned.apk 2>/dev/null || ls app/build/outputs/apk/release/*.apk | head -1)
+          SIGNED_APK="AppClone-signed.apk"
+
+          # Align the APK
+          $BUILD_TOOLS/zipalign -f -v 4 "$UNSIGNED_APK" "$SIGNED_APK"
+
+          # Sign with v1 + v2 + v3
+          $BUILD_TOOLS/apksigner sign \
+            --ks release.keystore \
+            --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}" \
+            --ks-key-alias "${{ secrets.KEY_ALIAS || 'appclone' }}" \
+            --key-pass "pass:${{ secrets.KEY_PASSWORD || 'appclone123' }}" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --v4-signing-enabled true \
+            --out "$SIGNED_APK" \
+            "$SIGNED_APK"
+
+          echo "=== Final Signature Verification ==="
+          $BUILD_TOOLS/apksigner verify --print-certs --verbose "$SIGNED_APK"
+          echo "APK signed successfully with v1+v2+v3+v4!"
+
+      - name: Get version info
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="1.0.0-$(date +%Y%m%d-%H%M%S)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "AppClone ${{ steps.version.outputs.version }}"
+          body: |
+            ## AppClone - Dual App Cloner 🚀
+
+            **Version:** ${{ steps.version.outputs.version }}
+            **Build Date:** ${{ steps.version.outputs.date }}
+            **Min Android:** 8.0 (API 26)
+            **Target Android:** 14 (API 34)
+
+            ### Features:
+            - ✅ Clone Messenger, Facebook, Zalo, WhatsApp, Instagram, Telegram & more
+            - ✅ Material 3+ Design with Dynamic Colors
+            - ✅ Dark Mode support
+            - ✅ Independent app data for each clone
+            - ✅ Signed with APK Signature v1 + v2 + v3 + v4
+
+            ### Installation:
+            1. Download the APK below
+            2. Enable "Install from unknown sources"
+            3. Install and open AppClone
+            4. Follow setup instructions
+
+            ### Supported Apps:
+            - Facebook & Messenger
+            - Zalo
+            - WhatsApp
+            - Instagram
+            - Telegram
+            - Snapchat
+            - Twitter/X
+            - Discord
+            - And many more...
+          files: AppClone-signed.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppClone-APK
+          path: AppClone-signed.apk
+          retention-days: 30
