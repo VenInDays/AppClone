@@ -127,6 +127,9 @@ class ClonedAppsFragment : Fragment() {
                     is ClonedAppsViewModel.Event.ShowMessage -> {
                         Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
                     }
+                    is ClonedAppsViewModel.Event.ShowError -> {
+                        com.appclone.ui.ErrorReportActivity.launch(requireContext(), event.error)
+                    }
                     is ClonedAppsViewModel.Event.None -> { /* no-op */ }
                 }
             }

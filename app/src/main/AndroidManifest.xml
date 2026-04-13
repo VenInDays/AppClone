@@ -47,6 +47,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Error Report Activity (shows errors/crashes instead of Toast) -->
+        <activity
+            android:name=".ui.ErrorReportActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true" />
+
         <!-- FileProvider for sharing cloned APKs -->
         <provider
             android:name="androidx.core.content.FileProvider"

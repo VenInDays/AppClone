@@ -29,6 +29,7 @@ class ClonedAppsViewModel(application: Application) : AndroidViewModel(applicati
     sealed class Event {
         data object None : Event()
         data class ShowMessage(val message: String) : Event()
+        data class ShowError(val error: String) : Event()
     }
 
     init {

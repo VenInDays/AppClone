@@ -43,6 +43,7 @@ class AppListViewModel(application: Application) : AndroidViewModel(application)
     sealed class Event {
         data object None : Event()
         data class ShowMessage(val message: String) : Event()
+        data class ShowError(val error: String) : Event()
         data class NavigateToClone(val appInfo: com.appclone.core.AppInfo) : Event()
         data class CloneCompleted(val clonedApp: ClonedApp) : Event()
         data class NeedInstallPermission(val packageName: String) : Event()
@@ -137,13 +138,20 @@ class AppListViewModel(application: Application) : AndroidViewModel(application)
                         }
 
                         override fun onFailure(pkg: String, error: String) {
-                            _events.value = Event.ShowMessage("Clone thất bại: $error")
+                                            val fullError = "Clone thất bại\n\n" +
+                                "Package: $pkg\n" +
+                                "App: ${appInfo.appName ?: "Unknown"}\n" +
+                                "Version: ${appInfo.versionName ?: "Unknown"}\n\n" +
+                                "Chi tiết:\n$error"
+                            _events.value = Event.ShowError(fullError)
                             _cloneProgress.value = null
                             _isCloning.value = false
                         }
                     })
             } catch (e: Exception) {
-                _events.value = Event.ShowMessage("Lỗi: ${e.message}")
+                    val sw = java.io.StringWriter()
+                    e.printStackTrace(java.io.PrintWriter(sw))
+                    _events.value = Event.ShowError("Lỗi không xác định khi clone\n\nChi tiết:\n${sw.toString()}")
                 _cloneProgress.value = null
                 _isCloning.value = false
             }

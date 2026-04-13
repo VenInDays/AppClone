@@ -147,6 +147,10 @@ class AppListFragment : Fragment() {
                     is AppListViewModel.Event.ShowMessage -> {
                         Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
                     }
+                    is AppListViewModel.Event.ShowError -> {
+                        hideCloneProgressDialog()
+                        com.appclone.ui.ErrorReportActivity.launch(requireContext(), event.error)
+                    }
                     is AppListViewModel.Event.NavigateToClone -> {
                         // Could show clone detail or directly clone
                     }

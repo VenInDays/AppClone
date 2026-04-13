@@ -37,13 +37,10 @@ public class ApkSignerUtil {
         File ksFile = new File(dir, ".signing_keystore");
         KeyStore ks = KeyStore.getInstance("PKCS12");
 
+        // Always regenerate keystore to ensure fixed DER-encoded certificate
+        // Old keystores contain broken certs from v2.0-v2.1
         if (ksFile.exists()) {
-            try (FileInputStream fis = new FileInputStream(ksFile)) {
-                ks.load(fis, "appclone123".toCharArray());
-            }
-            if (ks.containsAlias(KEY_ALIAS)) {
-                return ks;
-            }
+            ksFile.delete();
         }
 
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -71,26 +68,28 @@ public class ApkSignerUtil {
 
     private static X509Certificate createSelfSignedCertificate(
             KeyPair keyPair, String dn, Date startDate, Date endDate) throws Exception {
+        // Build TBS Certificate content (raw, without outer SEQUENCE wrapper)
+        byte[] tbsContent = buildTBSCertificate(keyPair, dn, startDate, endDate);
+
+        // Wrap TBS content in SEQUENCE to get proper DER-encoded TBSCertificate
+        byte[] tbsCertDer = wrapTag(0x30, tbsContent);
+
+        // Sign the DER-encoded TBSCertificate (not just the raw content)
         Signature sig = Signature.getInstance("SHA256withRSA");
         sig.initSign(keyPair.getPrivate());
-
-        byte[] tbsBytes = buildTBSCertificate(keyPair, dn, startDate, endDate);
-        sig.update(tbsBytes);
+        sig.update(tbsCertDer);
         byte[] signature = sig.sign();
 
-        ByteArrayOutputStream certOut = new ByteArrayOutputStream();
-        // SEQUENCE { tbsCert, sigAlgId, signature }
-        byte[] inner = concat(
-            tbsBytes,
+        // Build Certificate: SEQUENCE { tbsCert SEQUENCE, sigAlgId SEQUENCE, signature BIT STRING }
+        byte[] certContent = concat(
+            tbsCertDer,
             buildAlgIdSeq(new int[]{1, 2, 840, 113549, 1, 1, 11}),
             buildBitString(signature)
         );
-        certOut.write(0x30);
-        writeDERLength(certOut, inner.length);
-        certOut.write(inner);
+        byte[] certDer = wrapTag(0x30, certContent);
 
         java.security.cert.CertificateFactory cf = java.security.cert.CertificateFactory.getInstance("X.509");
-        return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certOut.toByteArray()));
+        return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certDer));
     }
 
     private static byte[] buildTBSCertificate(KeyPair keyPair, String dn,
@@ -135,12 +134,10 @@ public class ApkSignerUtil {
             byte[] seqBytes = seqOut.toByteArray();
             setOut.write(seqBytes);
         }
-        byte[] setContent = setOut.toByteArray();
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(0x31);
-        writeDERLength(out, setContent.length);
-        out.write(setContent);
-        return out.toByteArray();
+        // Name: SEQUENCE { SET { ATV } SET { ATV } ... }
+        // Outer wrapper must be SEQUENCE (0x30), NOT SET (0x31)
+        byte[] setContents = setOut.toByteArray();
+        return wrapTag(0x30, setContents);
     }
 
     private static int[] getDNOid(String type) {

@@ -159,7 +159,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="AppClone v2.1.0"
+                    android:text="AppClone v2.2.0"
                     android:textAppearance="?attr/textAppearanceTitleMedium"
                     android:textColor="?attr/colorOnSurface" />
 
@@ -194,7 +194,7 @@
             android:layout_marginTop="24dp"
             android:layout_marginBottom="24dp"
             android:gravity="center"
-            android:text="AppClone v2.1.0 — Made with ❤️"
+            android:text="AppClone v2.2.0 — Made with ❤️"
             android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:alpha="0.5" />

@@ -1,6 +1,7 @@
 package com.appclone.ui
 
 import android.app.Application
+import com.appclone.core.GlobalExceptionHandler
 import com.appclone.data.AppDatabase
 import com.appclone.data.CloneRepository
 
@@ -12,6 +13,11 @@ class CloneApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        // Register global exception handler to catch all crashes
+        Thread.setDefaultUncaughtExceptionHandler(
+            GlobalExceptionHandler(this)
+        )
     }
 
     companion object {
