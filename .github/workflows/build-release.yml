@@ -129,7 +129,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.version }}
           name: "AppClone ${{ steps.version.outputs.version }}"
           body: |
-            ## AppClone - Real APK Cloner v2.0 🚀
+            ## AppClone - Real APK Cloner 🚀
 
             **Version:** ${{ steps.version.outputs.version }}
             **Build Date:** ${{ steps.version.outputs.date }}
@@ -138,33 +138,27 @@ jobs:
             **Architecture:** Java (Core Engine) + Kotlin (UI Layer)
             **Signing:** v1 + v2 + v3 + v4
 
-            ### What's New in v2.0:
+            ### What's New in v2.1:
+            - 🐛 **Fixed STORED ZIP Error**: Resolved "STORED entry missing size" crash during cloning
+            - 🎨 **Modern Purple Theme**: Beautiful Material 3+ purple/blue color scheme
+            - 🔍 **Category Filters**: Filter apps by category (Tat ca/Pho bien/Nhan tin/MXH)
+            - 📱 **Enhanced App Cards**: Larger icons, better layout, improved clone buttons
+            - 🌙 **Working Dark Mode**: Toggle dark theme in Settings
+            - 📊 **Step Progress Dialog**: Visual 4-step progress during cloning
+            - 🔔 **Nav Badge**: Clone count badge on bottom navigation
+            - ✨ **10 Custom Vector Icons**: Beautiful new icons throughout the app
+            - 🎯 **Shimmer Loading**: Skeleton loading placeholders while apps load
+
+            ### Features:
             - ✅ **Real APK Cloning**: Modifies package name in binary manifest & DEX files
             - ✅ **Independent APK**: Creates actual signed APK you can install
-            - ✅ **Auto Install**: Automatically triggers APK installation after cloning
             - ✅ **No Root Required**: Works without root or special permissions
-            - ✅ **No Work Profile**: Removed problematic Work Profile dependency
-            - ✅ **Material 3 Design**: Modern UI with Dynamic Colors
-            - ✅ **Dark Mode**: Full dark theme support
-            - ✅ **Clone Progress**: Real-time progress tracking during clone
-
-            ### How It Works:
-            1. Select an app to clone
-            2. AppClone extracts the source APK
-            3. Modifies the package name in AndroidManifest.xml and classes.dex
-            4. Signs the modified APK with v1 scheme (on-device)
-            5. Triggers installation of the cloned APK
-            6. The cloned app runs independently alongside the original
+            - ✅ **Auto Install**: Automatically triggers APK installation after cloning
 
             ### Supported Apps:
-            - Facebook & Messenger
-            - Zalo
-            - WhatsApp
-            - Instagram
-            - Telegram
-            - Snapchat
-            - Twitter/X
-            - Discord
+            - Facebook, Messenger, Zalo, WhatsApp
+            - Instagram, Telegram, Snapchat, Twitter/X
+            - Discord, Line, KakaoTalk, Viber
             - And virtually any other app!
 
             ### Installation:
