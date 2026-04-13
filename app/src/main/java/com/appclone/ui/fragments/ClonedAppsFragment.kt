@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.appclone.databinding.FragmentClonedAppsBinding
 import com.appclone.ui.adapters.ClonedAppAdapter
 import com.appclone.ui.viewmodel.ClonedAppsViewModel
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 
 class ClonedAppsFragment : Fragment() {
@@ -35,6 +36,7 @@ class ClonedAppsFragment : Fragment() {
 
         setupRecyclerView()
         setupObservers()
+        setupToolbar()
     }
 
     private fun setupRecyclerView() {
@@ -43,15 +45,40 @@ class ClonedAppsFragment : Fragment() {
                 viewModel.launchClone(clonedApp)
             },
             onDeleteClick = { clonedApp ->
-                viewModel.deleteClone(clonedApp)
+                showDeleteConfirmDialog(clonedApp)
+            },
+            onInstallClick = { clonedApp ->
+                viewModel.installClone(clonedApp)
             },
             onSettingsClick = { clonedApp ->
-                // Navigate to clone settings
+                // Navigate to clone settings (future feature)
             }
         )
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@ClonedAppsFragment.adapter
+        }
+    }
+
+    private fun setupToolbar() {
+        binding.toolbar.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_delete_all -> {
+                    showDeleteAllConfirmDialog()
+                    true
+                }
+                else -> false
+            }
+        }
+
+        // Navigate to app list when clicking "Start cloning" button
+        binding.btnStartCloning.setOnClickListener {
+            // Switch to apps tab
+            (activity as? com.appclone.ui.MainActivity)?.let { mainActivity ->
+                mainActivity.findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(
+                    com.appclone.R.id.bottomNavigation
+                ).selectedItemId = com.appclone.R.id.nav_apps
+            }
         }
     }
 
@@ -66,7 +93,7 @@ class ClonedAppsFragment : Fragment() {
 
         lifecycleScope.launch {
             viewModel.clonedCount.collect { count ->
-                binding.toolbar.subtitle = "$count clone${if (count != 1) "s" else ""} dang chay"
+                binding.toolbar.subtitle = "$count clone đang hoạt động"
             }
         }
 
@@ -80,6 +107,42 @@ class ClonedAppsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun showDeleteConfirmDialog(clonedApp: com.appclone.data.ClonedApp) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Xóa ${clonedApp.cloneLabel}?")
+            .setMessage(
+                "Điều này sẽ gỡ cài đặt và xóa dữ liệu của clone này. " +
+                "Hành động này không thể hoàn tác."
+            )
+            .setPositiveButton("Xóa") { _, _ ->
+                viewModel.deleteClone(clonedApp)
+            }
+            .setNegativeButton("Hủy") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun showDeleteAllConfirmDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Xóa tất cả clone?")
+            .setMessage(
+                "Điều này sẽ gỡ cài đặt và xóa dữ liệu của TẤT CẢ clone. " +
+                "Hành động này không thể hoàn tác."
+            )
+            .setPositiveButton("Xóa tất cả") { _, _ ->
+                viewModel.deleteAllClones()
+            }
+            .setNegativeButton("Hủy") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    fun refreshList() {
+        viewModel.loadClonedApps()
     }
 
     override fun onDestroyView() {

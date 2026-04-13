@@ -14,6 +14,7 @@ import java.util.Locale
 class ClonedAppAdapter(
     private val onLaunchClick: (ClonedApp) -> Unit,
     private val onDeleteClick: (ClonedApp) -> Unit,
+    private val onInstallClick: (ClonedApp) -> Unit,
     private val onSettingsClick: (ClonedApp) -> Unit
 ) : ListAdapter<ClonedApp, ClonedAppAdapter.CloneViewHolder>(CloneDiffCallback) {
 
@@ -25,12 +26,17 @@ class ClonedAppAdapter(
 
         fun bind(clonedApp: ClonedApp) {
             binding.cloneName.text = clonedApp.cloneLabel
-            binding.packageName.text = clonedApp.packageName
+            binding.packageName.text = clonedApp.clonedPackageName.ifEmpty { clonedApp.packageName }
             binding.versionInfo.text = "v${clonedApp.versionName}"
             binding.cloneDate.text = dateFormat.format(Date(clonedApp.cloneDate))
 
+            // Show install button if APK exists but app might not be installed
+            val showInstall = clonedApp.apkPath.isNotEmpty()
+            binding.installButton.isVisible = showInstall
+
             binding.launchButton.setOnClickListener { onLaunchClick(clonedApp) }
             binding.deleteButton.setOnClickListener { onDeleteClick(clonedApp) }
+            binding.installButton.setOnClickListener { onInstallClick(clonedApp) }
             binding.settingsButton.setOnClickListener { onSettingsClick(clonedApp) }
 
             binding.statusIndicator.setCardBackgroundColor(

@@ -13,8 +13,13 @@
 # Keep Material components
 -keep class com.google.android.material.** { *; }
 
-# Keep clone engine classes
+# Keep clone engine classes (important for reflection/serialization)
 -keep class com.appclone.core.** { *; }
+-keepclassmembers class com.appclone.core.** { *; }
+
+# Keep BouncyCastle classes used for PKCS#7 signing
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
 
 # Keep JNI methods
 -keepclasseswithmembernames class * {

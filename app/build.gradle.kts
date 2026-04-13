@@ -12,8 +12,8 @@ android {
         applicationId = "com.appclone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -114,9 +114,6 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    // Work Manager
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
-
     // DataStore Preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
@@ -129,8 +126,9 @@ dependencies {
     // Splash Screen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    // Device Policy (for Work Profile)
-    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    // BouncyCastle for PKCS#7 signing (already included in Android, but ensure bcprov)
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

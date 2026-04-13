@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v2.0.0)'
+        required: true
+        default: 'v2.0.0'
 
 permissions:
   contents: write
@@ -74,30 +79,32 @@ jobs:
             -keypass "$KEY_PASSWORD" \
             -dname "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN"
 
-          # Find APK (could be signed or unsigned depending on config)
+          # Find APK
           APK=$(find app/build/outputs/apk/release/ -name "*.apk" | head -1)
           echo "Found APK: $APK"
 
-          # If APK is already signed, skip re-signing
+          # Sign or re-sign with v1+v2+v3+v4
           if $BUILD_TOOLS/apksigner verify "$APK" 2>/dev/null; then
-            echo "APK already signed, copying..."
-            cp "$APK" AppClone-signed.apk
-          else
-            echo "Signing unsigned APK..."
-            $BUILD_TOOLS/zipalign -f -v 4 "$APK" AppClone-aligned.apk
-            $BUILD_TOOLS/apksigner sign \
-              --ks release.keystore \
-              --ks-pass "pass:$KEYSTORE_PASSWORD" \
-              --ks-key-alias "$KEY_ALIAS" \
-              --key-pass "pass:$KEY_PASSWORD" \
-              --v1-signing-enabled true \
-              --v2-signing-enabled true \
-              --v3-signing-enabled true \
-              --v4-signing-enabled true \
-              --out AppClone-signed.apk \
-              AppClone-aligned.apk
-            rm -f AppClone-aligned.apk
+            echo "APK already signed, re-aligning and re-signing..."
+            # Extract unsigned version and re-sign
           fi
+
+          echo "Aligning APK..."
+          $BUILD_TOOLS/zipalign -f -v 4 "$APK" AppClone-aligned.apk
+
+          echo "Signing APK with v1+v2+v3+v4..."
+          $BUILD_TOOLS/apksigner sign \
+            --ks release.keystore \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --v4-signing-enabled true \
+            --out AppClone-signed.apk \
+            AppClone-aligned.apk
+          rm -f AppClone-aligned.apk
 
           echo "=== Final Verification ==="
           $BUILD_TOOLS/apksigner verify --print-certs --verbose AppClone-signed.apk
@@ -108,8 +115,10 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             VERSION="${{ github.ref_name }}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
           else
-            VERSION="1.0.0-$(date +%Y%m%d-%H%M%S)"
+            VERSION="v2.0.0-$(date +%Y%m%d-%H%M%S)"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
@@ -120,25 +129,32 @@ jobs:
           tag_name: ${{ steps.version.outputs.version }}
           name: "AppClone ${{ steps.version.outputs.version }}"
           body: |
-            ## AppClone - Dual App Cloner 🚀
+            ## AppClone - Real APK Cloner v2.0 🚀
 
             **Version:** ${{ steps.version.outputs.version }}
             **Build Date:** ${{ steps.version.outputs.date }}
             **Min Android:** 8.0 (API 26)
             **Target Android:** 14 (API 34)
+            **Architecture:** Java (Core Engine) + Kotlin (UI Layer)
+            **Signing:** v1 + v2 + v3 + v4
 
-            ### Features:
-            - ✅ Clone Messenger, Facebook, Zalo, WhatsApp, Instagram, Telegram & more
-            - ✅ Material 3+ Design with Dynamic Colors
-            - ✅ Dark Mode support
-            - ✅ Independent app data for each clone
-            - ✅ Signed with APK Signature v1 + v2 + v3 + v4
+            ### What's New in v2.0:
+            - ✅ **Real APK Cloning**: Modifies package name in binary manifest & DEX files
+            - ✅ **Independent APK**: Creates actual signed APK you can install
+            - ✅ **Auto Install**: Automatically triggers APK installation after cloning
+            - ✅ **No Root Required**: Works without root or special permissions
+            - ✅ **No Work Profile**: Removed problematic Work Profile dependency
+            - ✅ **Material 3 Design**: Modern UI with Dynamic Colors
+            - ✅ **Dark Mode**: Full dark theme support
+            - ✅ **Clone Progress**: Real-time progress tracking during clone
 
-            ### Installation:
-            1. Download the APK below
-            2. Enable "Install from unknown sources"
-            3. Install and open AppClone
-            4. Follow setup instructions
+            ### How It Works:
+            1. Select an app to clone
+            2. AppClone extracts the source APK
+            3. Modifies the package name in AndroidManifest.xml and classes.dex
+            4. Signs the modified APK with v1 scheme (on-device)
+            5. Triggers installation of the cloned APK
+            6. The cloned app runs independently alongside the original
 
             ### Supported Apps:
             - Facebook & Messenger
@@ -149,7 +165,13 @@ jobs:
             - Snapchat
             - Twitter/X
             - Discord
-            - And many more...
+            - And virtually any other app!
+
+            ### Installation:
+            1. Download the APK below
+            2. Enable "Install from unknown sources" for AppClone
+            3. Install and open AppClone
+            4. Select an app and tap "Clone"
           files: AppClone-signed.apk
           draft: false
           prerelease: false

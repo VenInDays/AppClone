@@ -2,7 +2,6 @@ package com.appclone.ui.adapters
 
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -25,7 +24,7 @@ class AppListAdapter(
         fun bind(appInfo: AppInfo) {
             binding.appName.text = appInfo.appName
             binding.packageName.text = appInfo.packageName
-            binding.appVersion.text = appInfo.versionName
+            binding.appVersion.text = "v${appInfo.versionName}"
             binding.appSize.text = appInfo.formattedSize
             binding.appCategory.text = appInfo.category ?: "Ứng dụng"
 

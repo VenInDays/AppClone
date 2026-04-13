@@ -2,6 +2,10 @@ package com.appclone.data
 
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Repository for cloned app data operations.
+ * Provides a clean API for the UI layer to interact with the database.
+ */
 class CloneRepository(private val dao: ClonedAppDao) {
 
     val allClones: Flow<List<ClonedApp>> = dao.getAllClonedApps()
@@ -23,4 +27,6 @@ class CloneRepository(private val dao: ClonedAppDao) {
     suspend fun getTotalClones(): Int = dao.getTotalCount()
 
     suspend fun deleteAllClones() = dao.deleteAll()
+
+    suspend fun getByClonedPackage(clonedPkg: String): ClonedApp? = dao.getByClonedPackage(clonedPkg)
 }

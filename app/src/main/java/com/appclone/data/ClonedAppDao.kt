@@ -14,11 +14,17 @@ interface ClonedAppDao {
     @Query("SELECT * FROM cloned_apps WHERE packageName = :packageName")
     fun getByPackage(packageName: String): Flow<List<ClonedApp>>
 
+    @Query("SELECT * FROM cloned_apps WHERE clonedPackageName = :clonedPkg")
+    suspend fun getByClonedPackage(clonedPkg: String): ClonedApp?
+
     @Query("SELECT * FROM cloned_apps WHERE id = :id")
     suspend fun getById(id: Int): ClonedApp?
 
     @Query("SELECT COUNT(*) FROM cloned_apps WHERE packageName = :packageName")
     suspend fun getCloneCount(packageName: String): Int
+
+    @Query("SELECT COUNT(*) FROM cloned_apps")
+    suspend fun getTotalCount(): Int
 
     @Query("UPDATE cloned_apps SET lastUsedDate = :timestamp WHERE id = :id")
     suspend fun updateLastUsed(id: Int, timestamp: Long = System.currentTimeMillis())
@@ -28,9 +34,6 @@ interface ClonedAppDao {
 
     @Query("DELETE FROM cloned_apps WHERE id = :id")
     suspend fun deleteById(id: Int)
-
-    @Query("SELECT COUNT(*) FROM cloned_apps")
-    suspend fun getTotalCount(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(clonedApp: ClonedApp): Long

@@ -106,6 +106,14 @@
                 android:src="@android:drawable/ic_media_play" />
 
             <ImageButton
+                android:id="@+id/installButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Cài đặt"
+                android:src="@android:drawable/ic_menu_set_as" />
+
+            <ImageButton
                 android:id="@+id/settingsButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
