@@ -33,7 +33,7 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipAll"
-                style="@style/Widget.Material3.FilterChip"
+                style="@style/Widget.Material3.Chip.Suggestion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Tất cả"
@@ -42,7 +42,7 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipPopular"
-                style="@style/Widget.Material3.FilterChip"
+                style="@style/Widget.Material3.Chip.Suggestion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Phổ biến"
@@ -50,7 +50,7 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipMessaging"
-                style="@style/Widget.Material3.FilterChip"
+                style="@style/Widget.Material3.Chip.Suggestion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Nhắn tin"
@@ -58,7 +58,7 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipSocial"
-                style="@style/Widget.Material3.FilterChip"
+                style="@style/Widget.Material3.Chip.Suggestion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="MXH"
