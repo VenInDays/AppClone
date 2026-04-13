@@ -70,11 +70,9 @@ public class BinaryFileEditor {
                     }
                 }
 
-                // Write entry
+                // Write entry - always use DEFLATED to avoid STORED entry issues
                 ZipEntry newEntry = new ZipEntry(name);
-                int method = entry.getMethod();
-                if (method == -1) method = ZipEntry.DEFLATED;
-                newEntry.setMethod(method);
+                newEntry.setMethod(ZipEntry.DEFLATED);
                 zos.putNextEntry(newEntry);
                 zos.write(data);
                 zos.closeEntry();

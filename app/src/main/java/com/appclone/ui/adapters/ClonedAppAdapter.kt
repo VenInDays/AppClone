@@ -2,9 +2,12 @@ package com.appclone.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.appclone.R
 import com.appclone.data.ClonedApp
 import com.appclone.databinding.ItemClonedAppBinding
 import java.text.SimpleDateFormat
@@ -30,22 +33,29 @@ class ClonedAppAdapter(
             binding.versionInfo.text = "v${clonedApp.versionName}"
             binding.cloneDate.text = dateFormat.format(Date(clonedApp.cloneDate))
 
-            // Show install button if APK exists but app might not be installed
-            val showInstall = clonedApp.apkPath.isNotEmpty()
-            binding.installButton.isVisible = showInstall
+            // Show install button if APK exists
+            binding.installButton.isVisible = clonedApp.apkPath.isNotEmpty()
 
             binding.launchButton.setOnClickListener { onLaunchClick(clonedApp) }
             binding.deleteButton.setOnClickListener { onDeleteClick(clonedApp) }
             binding.installButton.setOnClickListener { onInstallClick(clonedApp) }
             binding.settingsButton.setOnClickListener { onSettingsClick(clonedApp) }
 
-            binding.statusIndicator.setCardBackgroundColor(
-                if (clonedApp.isRunning) {
-                    binding.root.context.getColor(android.R.color.holo_green_light)
-                } else {
-                    binding.root.context.getColor(android.R.color.darker_gray)
-                }
-            )
+            // Status indicator with theme-aware colors
+            val context = binding.root.context
+            val bgColor = if (clonedApp.isRunning) {
+                ContextCompat.getColor(context, R.color.md_theme_primary_container)
+            } else {
+                ContextCompat.getColor(context, R.color.md_theme_surface_variant)
+            }
+            binding.statusIndicator.setCardBackgroundColor(bgColor)
+
+            val iconTint = if (clonedApp.isRunning) {
+                ContextCompat.getColor(context, R.color.md_theme_on_primary_container)
+            } else {
+                ContextCompat.getColor(context, R.color.md_theme_on_surface_variant)
+            }
+            binding.appIcon.imageTintList = android.content.res.ColorStateList.valueOf(iconTint)
         }
     }
 

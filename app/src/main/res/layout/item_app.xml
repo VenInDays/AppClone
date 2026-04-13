@@ -3,10 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
+    android:layout_marginHorizontal="4dp"
+    android:layout_marginVertical="4dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="2dp"
-    app:strokeWidth="0dp">
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:cardBackgroundColor="?attr/colorSurface"
+    android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,17 +19,21 @@
         android:orientation="horizontal"
         android:padding="12dp">
 
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/appIcon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:contentDescription="App icon"
-            android:src="@android:drawable/ic_menu_manage" />
+            android:src="@drawable/ic_apps"
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.AppClone.RoundedIcon"
+            app:strokeWidth="0.5dp"
+            app:strokeColor="?attr/colorOutlineVariant" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="14dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -37,6 +45,7 @@
                 android:maxLines="1"
                 android:text="App Name"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
                 android:textStyle="bold" />
 
             <TextView
@@ -47,50 +56,55 @@
                 android:maxLines="1"
                 android:text="com.example.app"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:alpha="0.6" />
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:alpha="0.7" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:orientation="horizontal">
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
                 <TextView
                     android:id="@+id/appVersion"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="v1.0.0"
-                    android:textAppearance="?attr/textAppearanceLabelSmall" />
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginHorizontal="6dp"
                     android:text="·"
-                    android:alpha="0.4" />
+                    android:textColor="?attr/colorOutline"
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/appSize"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
                     android:text="25 MB"
-                    android:textAppearance="?attr/textAppearanceLabelSmall" />
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginHorizontal="6dp"
                     android:text="·"
-                    android:alpha="0.4" />
+                    android:textColor="?attr/colorOutline"
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/appCategory"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
                     android:text="Messaging"
-                    android:textAppearance="?attr/textAppearanceLabelSmall" />
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
             </LinearLayout>
 
@@ -100,9 +114,17 @@
             android:id="@+id/cloneButton"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:minWidth="72dp"
             android:text="Clone"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:paddingHorizontal="12dp"
+            android:minHeight="0dp"
+            app:icon="@drawable/ic_clone"
+            app:iconSize="14dp"
+            app:iconPadding="4dp"
+            app:cornerRadius="20dp" />
 
     </LinearLayout>
 

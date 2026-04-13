@@ -3,133 +3,184 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
+    android:layout_marginHorizontal="4dp"
+    android:layout_marginVertical="4dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="2dp"
-    app:strokeWidth="0dp">
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:cardBackgroundColor="?attr/colorSurface"
+    android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="12dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <!-- Status Indicator -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/statusIndicator"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp">
-
-            <ImageView
-                android:id="@+id/appIcon"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:contentDescription="App icon"
-                android:padding="8dp"
-                android:src="@android:drawable/ic_menu_manage" />
-
-        </com.google.android.material.card.MaterialCardView>
-
+        <!-- Top row: icon + info -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/cloneName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="App (Clone 1)"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textStyle="bold" />
+            <!-- App icon with colored badge -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/statusIndicator"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer">
 
-            <TextView
-                android:id="@+id/packageName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="com.example.app"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:alpha="0.6" />
+                <ImageView
+                    android:id="@+id/appIcon"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="App icon"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_cloned"
+                    app:tint="?attr/colorOnPrimaryContainer" />
+
+            </com.google.android.material.card.MaterialCardView>
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:orientation="horizontal">
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/versionInfo"
+                    android:id="@+id/cloneName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="v1.0.0"
-                    android:textAppearance="?attr/textAppearanceLabelSmall" />
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="App (Clone 1)"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/packageName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="·"
-                    android:alpha="0.4" />
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="com.example.app"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:alpha="0.7" />
 
-                <TextView
-                    android:id="@+id/cloneDate"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="01/01/2024"
-                    android:textAppearance="?attr/textAppearanceLabelSmall" />
+                    android:layout_marginTop="2dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/versionInfo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="v1.0.0"
+                        android:textAppearance="?attr/textAppearanceLabelSmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="6dp"
+                        android:text="·"
+                        android:textColor="?attr/colorOutline"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/cloneDate"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="01/01/2024"
+                        android:textAppearance="?attr/textAppearanceLabelSmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="wrap_content"
+        <!-- Horizontal button row -->
+        <com.google.android.material.chip.ChipGroup
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_marginTop="12dp"
+            app:chipSpacingHorizontal="8dp"
+            app:singleLine="true">
 
-            <ImageButton
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/launchButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Mở ứng dụng"
-                android:src="@android:drawable/ic_media_play" />
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="16dp"
+                android:text="Mở"
+                android:textSize="12sp"
+                app:icon="@drawable/ic_launch"
+                app:iconSize="14dp"
+                app:iconPadding="4dp"
+                app:cornerRadius="16dp" />
 
-            <ImageButton
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/installButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Cài đặt"
-                android:src="@android:drawable/ic_menu_set_as" />
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="16dp"
+                android:text="Cài"
+                android:textSize="12sp"
+                app:icon="@drawable/ic_install"
+                app:iconSize="14dp"
+                app:iconPadding="4dp"
+                app:cornerRadius="16dp" />
 
-            <ImageButton
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/settingsButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Cài đặt"
-                android:src="@android:drawable/ic_menu_preferences" />
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="16dp"
+                android:text="Chia sẻ"
+                android:textSize="12sp"
+                app:icon="@drawable/ic_share"
+                app:iconSize="14dp"
+                app:iconPadding="4dp" />
 
-            <ImageButton
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/deleteButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Xóa"
-                android:src="@android:drawable/ic_menu_delete" />
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="16dp"
+                android:text="Xóa"
+                android:textColor="?attr/colorError"
+                android:textSize="12sp"
+                app:icon="@drawable/ic_delete"
+                app:iconSize="14dp"
+                app:iconPadding="4dp"
+                app:iconTint="?attr/colorError" />
 
-        </LinearLayout>
+        </com.google.android.material.chip.ChipGroup>
 
     </LinearLayout>
 

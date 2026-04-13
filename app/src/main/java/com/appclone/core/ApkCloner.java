@@ -37,7 +37,7 @@ public class ApkCloner {
 
     private ApkCloner(Context context) {
         this.context = context.getApplicationContext();
-        this.cloneOutputDir = new File(context.getExternalFilesDir(), "cloned_apks");
+        this.cloneOutputDir = new File(context.getExternalFilesDir(null), "cloned_apks");
         if (!cloneOutputDir.exists()) {
             cloneOutputDir.mkdirs();
         }

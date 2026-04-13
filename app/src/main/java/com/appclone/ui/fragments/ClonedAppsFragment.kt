@@ -4,15 +4,18 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.appclone.R
 import com.appclone.databinding.FragmentClonedAppsBinding
 import com.appclone.ui.adapters.ClonedAppAdapter
 import com.appclone.ui.viewmodel.ClonedAppsViewModel
+import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 
@@ -51,12 +54,30 @@ class ClonedAppsFragment : Fragment() {
                 viewModel.installClone(clonedApp)
             },
             onSettingsClick = { clonedApp ->
-                // Navigate to clone settings (future feature)
+                // Share the cloned app
+                shareClonedApp(clonedApp)
             }
         )
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@ClonedAppsFragment.adapter
+        }
+    }
+
+    private fun shareClonedApp(clonedApp: com.appclone.data.ClonedApp) {
+        if (clonedApp.apkPath.isNotEmpty()) {
+            val intent = android.content.Intent().apply {
+                action = android.content.Intent.ACTION_SEND
+                type = "application/vnd.android.package-archive"
+                val apkUri = androidx.core.content.FileProvider.getUriForFile(
+                    requireContext(),
+                    "${requireContext().packageName}.fileprovider",
+                    java.io.File(clonedApp.apkPath)
+                )
+                putExtra(android.content.Intent.EXTRA_STREAM, apkUri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(android.content.Intent.createChooser(intent, "Chia sẻ APK"))
         }
     }
 
@@ -93,7 +114,10 @@ class ClonedAppsFragment : Fragment() {
 
         lifecycleScope.launch {
             viewModel.clonedCount.collect { count ->
-                binding.toolbar.subtitle = "$count clone đang hoạt động"
+                binding.toolbar.subtitle = if (count > 0) "$count clone" else null
+
+                // Update badge on bottom navigation
+                (activity as? com.appclone.ui.MainActivity)?.updateCloneBadge(count)
             }
         }
 

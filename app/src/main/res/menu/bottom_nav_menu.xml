@@ -2,14 +2,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/nav_apps"
-        android:icon="@android:drawable/ic_menu_manage"
+        android:icon="@drawable/ic_apps"
         android:title="@string/tab_apps" />
     <item
         android:id="@+id/nav_clones"
-        android:icon="@android:drawable/ic_menu_set_as"
+        android:icon="@drawable/ic_cloned"
         android:title="@string/tab_clones" />
     <item
         android:id="@+id/nav_settings"
-        android:icon="@android:drawable/ic_menu_preferences"
+        android:icon="@drawable/ic_settings"
         android:title="@string/tab_settings" />
 </menu>

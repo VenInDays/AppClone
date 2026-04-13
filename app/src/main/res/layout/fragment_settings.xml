@@ -2,7 +2,8 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="?attr/colorBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,26 +15,33 @@
             android:id="@+id/topAppBar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@android:drawable/ic_menu_revert"
-            app:title="Cài đặt" />
+            app:navigationIcon="@drawable/ic_settings"
+            app:title="Cài đặt"
+            app:titleTextColor="?attr/colorOnSurface" />
 
+        <!-- General settings card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="16dp">
+            android:layout_marginTop="8dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Chung"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorPrimary"
                     android:textStyle="bold" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
@@ -41,42 +49,54 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Thông báo từ clone" />
+                    android:text="Thông báo từ clone"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    app:thumbTint="@color/md_theme_primary" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switchDarkMode"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Chế độ tối" />
+                    android:text="Chế độ tối"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    app:thumbTint="@color/md_theme_primary" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switchAutoStart"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Tự động khởi động clone" />
+                    android:text="Tự động khởi động clone"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    app:thumbTint="@color/md_theme_primary" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Data management card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="16dp">
+            android:layout_marginTop="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Quản lý dữ liệu"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorPrimary"
                     android:textStyle="bold" />
 
                 <com.google.android.material.button.MaterialButton
@@ -85,7 +105,12 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:text="Xóa cache"
-                    style="@style/Widget.Material3.Button.OutlinedButton" />
+                    android:textColor="?attr/colorOnSurface"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    app:icon="@drawable/ic_refresh"
+                    app:iconSize="18dp"
+                    app:iconPadding="8dp"
+                    app:cornerRadius="12dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnClearAll"
@@ -93,37 +118,50 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="Xóa tất cả clone"
-                    android:textColor="@android:color/holo_red_dark"
-                    style="@style/Widget.Material3.Button.OutlinedButton" />
+                    android:textColor="?attr/colorError"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    app:icon="@drawable/ic_delete"
+                    app:iconSize="18dp"
+                    app:iconPadding="8dp"
+                    app:iconTint="?attr/colorError"
+                    app:strokeColor="?attr/colorError"
+                    app:cornerRadius="12dp" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- About card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="16dp">
+            android:layout_marginTop="12dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Giới thiệu"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorPrimary"
                     android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="AppClone v1.0.0"
-                    android:textAppearance="?attr/textAppearanceBodyMedium" />
+                    android:layout_marginTop="12dp"
+                    android:text="AppClone v2.1.0"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface" />
 
                 <TextView
                     android:layout_width="match_parent"
@@ -131,20 +169,35 @@
                     android:layout_marginTop="4dp"
                     android:text="Clone và chạy nhiều tài khoản cùng lúc trên một thiết bị. Hỗ trợ Messenger, Facebook, Zalo và hàng trăm ứng dụng khác."
                     android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:alpha="0.7" />
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:alpha="0.8" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnShare"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Chia sẻ ứng dụng"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    app:icon="@drawable/ic_share"
+                    app:iconSize="18dp"
+                    app:iconPadding="8dp"
+                    app:cornerRadius="12dp" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Footer -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="24dp"
             android:gravity="center"
-            android:text="AppClone - Made with ❤️"
+            android:text="AppClone v2.1.0 — Made with ❤️"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            android:alpha="0.4" />
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:alpha="0.5" />
 
     </LinearLayout>
 </ScrollView>

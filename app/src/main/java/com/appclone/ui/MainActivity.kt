@@ -13,6 +13,8 @@ import com.appclone.databinding.ActivityMainBinding
 import com.appclone.ui.fragments.AppListFragment
 import com.appclone.ui.fragments.ClonedAppsFragment
 import com.appclone.ui.fragments.SettingsFragment
+import com.google.android.material.badge.BadgeDrawable
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -61,6 +63,18 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
             .commitAllowingStateLoss()
+    }
+
+    fun updateCloneBadge(count: Int) {
+        val badge = binding.bottomNavigation.getOrCreateBadge(R.id.nav_clones)
+        badge.number = count
+        badge.isVisible = count > 0
+        badge.backgroundColor = getColor(R.color.md_theme_primary)
+        badge.badgeTextColor = getColor(R.color.md_theme_on_primary)
+    }
+
+    fun clearCloneBadge() {
+        binding.bottomNavigation.removeBadge(R.id.nav_clones)
     }
 
     fun showSnackbar(message: String) {

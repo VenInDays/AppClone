@@ -9,6 +9,7 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:backgroundTint="?attr/colorSurface"
         app:liftOnScroll="true">
 
         <com.google.android.material.search.SearchBar
@@ -16,7 +17,64 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Tìm ứng dụng..."
+            android:layout_marginHorizontal="8dp"
             app:layout_scrollFlags="scroll|enterAlways" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="4dp"
+            app:singleLine="true"
+            app:singleSelection="true"
+            app:selectionRequired="true"
+            app:chipSpacingHorizontal="8dp">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipAll"
+                style="@style/Widget.Material3.FilterChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tất cả"
+                android:checked="true"
+                app:chipIconVisible="false" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipPopular"
+                style="@style/Widget.Material3.FilterChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Phổ biến"
+                app:chipIconVisible="false" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipMessaging"
+                style="@style/Widget.Material3.FilterChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nhắn tin"
+                app:chipIconVisible="false" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipSocial"
+                style="@style/Widget.Material3.FilterChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MXH"
+                app:chipIconVisible="false" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+        <TextView
+            android:id="@+id/txtAppCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="4dp"
+            android:text="0 ứng dụng"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -45,11 +103,36 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:clipToPadding="false"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="8dp"
             android:paddingBottom="80dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Shimmer loading state -->
+        <LinearLayout
+            android:id="@+id/shimmerLoading"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:orientation="vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="8dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <include layout="@layout/item_shimmer_app" />
+            <include layout="@layout/item_shimmer_app" />
+            <include layout="@layout/item_shimmer_app" />
+            <include layout="@layout/item_shimmer_app" />
+            <include layout="@layout/item_shimmer_app" />
+            <include layout="@layout/item_shimmer_app" />
+
+        </LinearLayout>
 
         <ProgressBar
             android:id="@+id/progressBar"
@@ -77,34 +160,38 @@
             <ImageView
                 android:layout_width="96dp"
                 android:layout_height="96dp"
-                android:src="@android:drawable/ic_menu_manage"
+                android:src="@drawable/ic_search"
                 android:contentDescription="Empty state"
-                android:alpha="0.3" />
+                android:alpha="0.3"
+                app:tint="?attr/colorOnSurfaceVariant" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="Không tìm thấy ứng dụng nào"
-                android:textSize="16sp" />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Thử tìm kiếm ứng dụng khác"
-                android:textSize="14sp"
-                android:alpha="0.6" />
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:alpha="0.7" />
 
         </LinearLayout>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabRefresh"
+            style="@style/Widget.Material3.FloatingActionButton.Primary"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
             android:contentDescription="Làm mới"
-            android:src="@android:drawable/ic_menu_rotate"
+            android:src="@drawable/ic_refresh"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 

@@ -16,7 +16,8 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:title="Đã Clone"
-            app:menu="@menu/cloned_apps_menu" />
+            app:menu="@menu/cloned_apps_menu"
+            app:titleTextColor="?attr/colorOnSurface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -30,6 +31,8 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:clipToPadding="false"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="8dp"
             android:paddingBottom="80dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -49,26 +52,54 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
-            <ImageView
-                android:layout_width="96dp"
-                android:layout_height="96dp"
-                android:src="@android:drawable/ic_menu_add"
-                android:contentDescription="Empty state"
-                android:alpha="0.3" />
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="28dp"
+                    android:src="@drawable/ic_clone"
+                    android:contentDescription="Empty state"
+                    app:tint="?attr/colorPrimary"
+                    android:alpha="0.6" />
+
+            </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="24dp"
                 android:text="Chưa có ứng dụng nào được clone"
-                android:textSize="16sp" />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Clone ứng dụng để sử dụng nhiều tài khoản"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:alpha="0.7" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnStartCloning"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="Bắt đầu clone" />
+                android:layout_marginTop="20dp"
+                android:text="Bắt đầu clone"
+                android:minWidth="180dp"
+                app:icon="@drawable/ic_clone"
+                app:iconSize="18dp"
+                app:iconPadding="8dp"
+                app:cornerRadius="24dp" />
 
         </LinearLayout>
 

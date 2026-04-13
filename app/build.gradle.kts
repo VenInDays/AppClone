@@ -12,8 +12,8 @@ android {
         applicationId = "com.appclone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = 3
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -126,9 +126,8 @@ dependencies {
     // Splash Screen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    // BouncyCastle for PKCS#7 signing (already included in Android, but ensure bcprov)
-    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+    // No BouncyCastle dependency - using pure Java for PKCS#7 signing
+    // (Android has built-in BC but API varies between versions)
 
     // Testing
     testImplementation("junit:junit:4.13.2")

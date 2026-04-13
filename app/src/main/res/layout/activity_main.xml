@@ -8,9 +8,11 @@
     tools:context=".ui.MainActivity">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true"
+        android:backgroundTint="@color/md_theme_primary"
         app:liftOnScroll="true">
 
         <com.google.android.material.appbar.MaterialToolbar
@@ -18,7 +20,8 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:title="@string/app_name"
-            app:titleTextColor="@android:color/white"
+            app:titleTextColor="@color/md_theme_on_primary"
+            app:titleCentered="false"
             style="@style/Widget.Material3.Toolbar.Surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -41,7 +44,11 @@
             android:id="@+id/bottomNavigation"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:backgroundTint="?attr/colorSurface"
+            app:elevation="8dp"
             app:labelVisibilityMode="labeled"
+            app:itemIconTint="@color/md_theme_primary"
+            app:itemTextColor="@color/md_theme_primary"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
