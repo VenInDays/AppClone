@@ -42,7 +42,9 @@ android {
                 "META-INF/NOTICE",
                 "META-INF/NOTICE.txt",
                 "META-INF/notice.txt",
-                "META-INF/*.kotlin_module"
+                "META-INF/*.kotlin_module",
+                "META-INF/versions/**",
+                "META-INF/OSGI-INF/**"
             )
         }
     }
