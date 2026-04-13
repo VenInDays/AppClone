@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.appclone.R
 import com.appclone.databinding.FragmentClonedAppsBinding
 import com.appclone.ui.adapters.ClonedAppAdapter
 import com.appclone.ui.viewmodel.ClonedAppsViewModel

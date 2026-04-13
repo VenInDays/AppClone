@@ -7,6 +7,7 @@ import com.appclone.core.ApkCloner
 import com.appclone.core.CloneCallback
 import com.appclone.data.CloneRepository
 import com.appclone.data.ClonedApp
+import com.appclone.ui.CloneApplication
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,7 +56,7 @@ class AppListViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val apps = cloneEngine.popularCloneTargets
+                val apps = cloneEngine.getPopularCloneTargets()
                 _appList.value = apps
             } catch (e: Exception) {
                 _events.value = Event.ShowMessage("Lỗi tải danh sách ứng dụng")
@@ -69,7 +70,7 @@ class AppListViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val apps = cloneEngine.allInstalledApps
+                val apps = cloneEngine.getAllInstalledApps()
                 _appList.value = apps
             } catch (e: Exception) {
                 _events.value = Event.ShowMessage("Lỗi tải danh sách ứng dụng")

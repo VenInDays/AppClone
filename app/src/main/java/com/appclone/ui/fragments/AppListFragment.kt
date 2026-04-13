@@ -16,6 +16,7 @@ import com.appclone.R
 import com.appclone.databinding.FragmentAppListBinding
 import com.appclone.ui.adapters.AppListAdapter
 import com.appclone.ui.viewmodel.AppListViewModel
+import androidx.appcompat.app.AlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 
@@ -25,7 +26,7 @@ class AppListFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: AppListViewModel by viewModels()
     private lateinit var adapter: AppListAdapter
-    private var progressDialog: MaterialAlertDialogBuilder? = null
+    private var progressDialog: AlertDialog? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -149,30 +150,29 @@ class AppListFragment : Fragment() {
     private fun showCloneProgressDialog(packageName: String, progress: Int, message: String) {
         if (!isAdded) return
 
-        if (progressDialog == null) {
+        if (progressDialog == null || progressDialog?.isShowing == false) {
             val dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_clone_progress, null)
 
-            progressDialog = MaterialAlertDialogBuilder(requireContext())
+            val dialog = MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Đang clone...")
                 .setView(dialogView)
                 .setCancelable(false)
                 .create()
-                .also { it.show() }
+            dialog.show()
+            progressDialog = dialog
         }
 
         progressDialog?.let { dialog ->
-            if (dialog is androidx.appcompat.app.AlertDialog) {
-                dialog.findViewById<TextView>(R.id.txtProgressMessage)?.text = message
-                dialog.findViewById<android.widget.ProgressBar>(R.id.progressBar)?.progress = progress
-                dialog.findViewById<TextView>(R.id.txtProgressPercent)?.text = "$progress%"
-            }
+            dialog.findViewById<TextView>(R.id.txtProgressMessage)?.text = message
+            dialog.findViewById<android.widget.ProgressBar>(R.id.progressBar)?.progress = progress
+            dialog.findViewById<TextView>(R.id.txtProgressPercent)?.text = "$progress%"
         }
     }
 
     private fun hideCloneProgressDialog() {
         progressDialog?.let { dialog ->
-            if (dialog is androidx.appcompat.app.AlertDialog && dialog.isShowing) {
+            if (dialog.isShowing) {
                 dialog.dismiss()
             }
         }
