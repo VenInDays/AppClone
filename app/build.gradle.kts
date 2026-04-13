@@ -126,9 +126,9 @@ dependencies {
     // Splash Screen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    // BouncyCastle for PKCS#7 signing (already included in Android, but ensure bcprov)
-    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+    // BouncyCastle for PKCS#7 signing
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.78")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
