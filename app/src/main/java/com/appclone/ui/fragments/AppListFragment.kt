@@ -76,10 +76,10 @@ class AppListFragment : Fragment() {
 
     private fun setupChips() {
         binding.chipAll.setOnClickListener {
-            binding.chipGroup.clearOnCheckedStateChangeListeners()
+            binding.chipGroup.clearOnCheckedChangeListeners()
             binding.chipAll.isChecked = true
             viewModel.loadAllApps()
-            binding.chipGroup.setOnCheckedStateChangeListener { _, _ ->
+            binding.chipGroup.setOnCheckedChangeListener { _, _ ->
                 handleChipSelection()
             }
         }
@@ -88,15 +88,12 @@ class AppListFragment : Fragment() {
             viewModel.loadPopularApps()
         }
 
-        binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
-            if (checkedIds.contains(R.id.chipAll)) {
-                viewModel.loadAllApps()
-            } else if (checkedIds.contains(R.id.chipPopular)) {
-                viewModel.loadPopularApps()
-            } else if (checkedIds.contains(R.id.chipMessaging)) {
-                filterByCategory("Nhắn tin")
-            } else if (checkedIds.contains(R.id.chipSocial)) {
-                filterByCategory("MXH")
+        binding.chipGroup.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.chipAll -> viewModel.loadAllApps()
+                R.id.chipPopular -> viewModel.loadPopularApps()
+                R.id.chipMessaging -> filterByCategory("Nhắn tin")
+                R.id.chipSocial -> filterByCategory("MXH")
             }
         }
     }
