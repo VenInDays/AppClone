@@ -138,6 +138,12 @@ jobs:
             **Architecture:** Java (Core Engine) + Kotlin (UI Layer)
             **Signing:** v1 + v2 + v3 + v4
 
+            ### What's New in v2.4:
+            - 🧠 **Streaming Signing (No OOM)**: Rewrote signing to use 2-pass streaming - works on any APK size even with 128MB heap
+            - 🔐 **APK Signature Scheme V2**: Added V2 signing block for Android 7.0+ compatibility - cloned APKs now install correctly
+            - ⚡ **V1 + V2 Dual Signing**: Both V1 (JAR) and V2 signing for maximum device coverage
+            - 📱 **Tested on Android 8.1**: Verified on Welcome A99 and similar devices
+
             ### What's New in v2.3:
             - 🔐 **BouncyCastle Signing**: Rewrote APK signing using BouncyCastle CMS for standard-compatible PKCS#7
             - 🐛 **Fixed APK Install Failure**: Cloned APKs now have valid, Android-compatible signatures
