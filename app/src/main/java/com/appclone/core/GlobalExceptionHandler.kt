@@ -1,6 +1,7 @@
 package com.appclone.core
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -51,7 +52,18 @@ class GlobalExceptionHandler(
 
         // Launch error activity on main thread
         Handler(Looper.getMainLooper()).post {
-            ErrorReportActivity.launch(application, errorMessage)
+            val intent = Intent(application, ErrorReportActivity::class.java).apply {
+                putExtra(ErrorReportActivity.EXTRA_ERROR, errorMessage)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            application.startActivity(intent)
+
+            // Delay to let the error activity start, then kill the process
+            Handler(Looper.getMainLooper()).postDelayed({
+                android.os.Process.killProcess(android.os.Process.myPid())
+                System.exit(1)
+            }, 500)
         }
     }
 

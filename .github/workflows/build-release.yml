@@ -138,6 +138,13 @@ jobs:
             **Architecture:** Java (Core Engine) + Kotlin (UI Layer)
             **Signing:** v1 + v2 + v3 + v4
 
+            ### What's New in v2.2:
+            - 🐛 **Fixed Certificate Signing Error**: Resolved WRONG_TAG ASN.1 encoding crash during APK signing
+            - 🐛 **Fixed Splash Screen Freeze**: Error activity no longer stuck on splash screen
+            - 🚫 **Removed All Toasts**: All errors now navigate to dedicated Error Report Activity
+            - 📋 **Error Copy Button**: Easily copy full error details to share bug reports
+            - 🔒 **Improved Crash Handling**: Better global exception handler with proper process cleanup
+
             ### What's New in v2.1:
             - 🐛 **Fixed STORED ZIP Error**: Resolved "STORED entry missing size" crash during cloning
             - 🎨 **Modern Purple Theme**: Beautiful Material 3+ purple/blue color scheme

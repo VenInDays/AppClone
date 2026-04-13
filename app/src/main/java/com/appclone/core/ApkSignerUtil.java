@@ -122,20 +122,19 @@ public class ApkSignerUtil {
             String[] kv = part.split("=", 2);
             byte[] oidBytes = encodeOID(getDNOid(kv[0].trim()));
             byte[] valueBytes = kv[1].trim().getBytes();
+            // Build UTF8String TLV for the value
             byte[] valueTLV = new byte[1 + getDERLengthSize(valueBytes.length) + valueBytes.length];
-            valueTLV[0] = 0x0C;
+            valueTLV[0] = 0x0C; // UTF8String tag
             writeDERLengthTo(valueTLV, 1, valueBytes.length);
             System.arraycopy(valueBytes, 0, valueTLV, 1 + getDERLengthSize(valueBytes.length), valueBytes.length);
-            byte[] seqContent = concat(oidBytes, valueTLV);
-            ByteArrayOutputStream seqOut = new ByteArrayOutputStream();
-            seqOut.write(0x31);
-            writeDERLength(seqOut, seqContent.length);
-            seqOut.write(seqContent);
-            byte[] seqBytes = seqOut.toByteArray();
-            setOut.write(seqBytes);
+            // AttributeTypeAndValue = SEQUENCE { type OID, value UTF8String }
+            byte[] atvContent = concat(oidBytes, valueTLV);
+            byte[] atvSeq = wrapTag(0x30, atvContent);
+            // RelativeDistinguishedName = SET SIZE (1..MAX) OF AttributeTypeAndValue
+            byte[] rdnSet = wrapTag(0x31, atvSeq);
+            setOut.write(rdnSet);
         }
-        // Name: SEQUENCE { SET { ATV } SET { ATV } ... }
-        // Outer wrapper must be SEQUENCE (0x30), NOT SET (0x31)
+        // Name = SEQUENCE { RelativeDistinguishedName, ... }
         byte[] setContents = setOut.toByteArray();
         return wrapTag(0x30, setContents);
     }

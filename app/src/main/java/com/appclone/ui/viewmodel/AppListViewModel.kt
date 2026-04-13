@@ -60,7 +60,9 @@ class AppListViewModel(application: Application) : AndroidViewModel(application)
                 val apps = cloneEngine.getPopularCloneTargets()
                 _appList.value = apps
             } catch (e: Exception) {
-                _events.value = Event.ShowMessage("Lỗi tải danh sách ứng dụng")
+                val sw = java.io.StringWriter()
+                e.printStackTrace(java.io.PrintWriter(sw))
+                _events.value = Event.ShowError("Lỗi tải danh sách ứng dụng\n\nChi tiết:\n${sw.toString()}")
             } finally {
                 _isLoading.value = false
             }
@@ -74,7 +76,9 @@ class AppListViewModel(application: Application) : AndroidViewModel(application)
                 val apps = cloneEngine.getAllInstalledApps()
                 _appList.value = apps
             } catch (e: Exception) {
-                _events.value = Event.ShowMessage("Lỗi tải danh sách ứng dụng")
+                val sw = java.io.StringWriter()
+                e.printStackTrace(java.io.PrintWriter(sw))
+                _events.value = Event.ShowError("Lỗi tải danh sách ứng dụng\n\nChi tiết:\n${sw.toString()}")
             } finally {
                 _isLoading.value = false
             }

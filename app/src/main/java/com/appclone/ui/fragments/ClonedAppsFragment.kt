@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -125,7 +124,10 @@ class ClonedAppsFragment : Fragment() {
             viewModel.events.collect { event ->
                 when (event) {
                     is ClonedAppsViewModel.Event.ShowMessage -> {
-                        Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
+                        com.google.android.material.snackbar.Snackbar.make(
+                            binding.root, event.message,
+                            com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                        ).show()
                     }
                     is ClonedAppsViewModel.Event.ShowError -> {
                         com.appclone.ui.ErrorReportActivity.launch(requireContext(), event.error)

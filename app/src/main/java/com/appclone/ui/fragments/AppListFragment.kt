@@ -7,7 +7,6 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -145,7 +144,11 @@ class AppListFragment : Fragment() {
             viewModel.events.collect { event ->
                 when (event) {
                     is AppListViewModel.Event.ShowMessage -> {
-                        Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
+                        // Use Snackbar instead of Toast
+                        com.google.android.material.snackbar.Snackbar.make(
+                            binding.root, event.message,
+                            com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                        ).show()
                     }
                     is AppListViewModel.Event.ShowError -> {
                         hideCloneProgressDialog()
@@ -155,10 +158,10 @@ class AppListFragment : Fragment() {
                         // Could show clone detail or directly clone
                     }
                     is AppListViewModel.Event.CloneCompleted -> {
-                        Toast.makeText(
-                            requireContext(),
+                        com.google.android.material.snackbar.Snackbar.make(
+                            binding.root,
                             "Clone ${event.clonedApp.cloneLabel} thành công! Đang mở cài đặt...",
-                            Toast.LENGTH_LONG
+                            com.google.android.material.snackbar.Snackbar.LENGTH_LONG
                         ).show()
                         hideCloneProgressDialog()
                     }

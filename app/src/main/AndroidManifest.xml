@@ -52,6 +52,7 @@
             android:name=".ui.ErrorReportActivity"
             android:exported="false"
             android:launchMode="singleTop"
+            android:theme="@style/Theme.AppClone"
             android:excludeFromRecents="true" />
 
         <!-- FileProvider for sharing cloned APKs -->
