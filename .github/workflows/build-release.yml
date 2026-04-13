@@ -138,6 +138,13 @@ jobs:
             **Architecture:** Java (Core Engine) + Kotlin (UI Layer)
             **Signing:** v1 + v2 + v3 + v4
 
+            ### What's New in v2.3:
+            - 🔐 **BouncyCastle Signing**: Rewrote APK signing using BouncyCastle CMS for standard-compatible PKCS#7
+            - 🐛 **Fixed APK Install Failure**: Cloned APKs now have valid, Android-compatible signatures
+            - 🛡️ **Crash Loop Prevention**: Error page no longer causes infinite crash-restart cycles
+            - 🎨 **Simple Error UI**: Error page uses basic Android views - no Material crashes
+            - 📋 **Copy Error**: Copy full error log to clipboard for easy bug reporting
+
             ### What's New in v2.2:
             - 🐛 **Fixed Certificate Signing Error**: Resolved WRONG_TAG ASN.1 encoding crash during APK signing
             - 🐛 **Fixed Splash Screen Freeze**: Error activity no longer stuck on splash screen
