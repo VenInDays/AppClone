@@ -1,0 +1,186 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v2.0.0)'
+        required: true
+        default: 'v2.0.0'
+
+permissions:
+  contents: write
+
+env:
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Download Gradle Wrapper
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp/
+          /tmp/gradle-8.4/bin/gradle wrapper --gradle-version 8.4
+          rm -rf /tmp/gradle.zip /tmp/gradle-8.4
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Sign APK with v1+v2+v3+v4
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'appclone123' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'appclone' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'appclone123' }}
+        run: |
+          BUILD_TOOLS=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)
+
+          # Generate keystore
+          keytool -genkeypair \
+            -v \
+            -keystore release.keystore \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA \
+            -keysize 4096 \
+            -validity 10000 \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -dname "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN"
+
+          # Find APK
+          APK=$(find app/build/outputs/apk/release/ -name "*.apk" | head -1)
+          echo "Found APK: $APK"
+
+          # Sign or re-sign with v1+v2+v3+v4
+          if $BUILD_TOOLS/apksigner verify "$APK" 2>/dev/null; then
+            echo "APK already signed, re-aligning and re-signing..."
+            # Extract unsigned version and re-sign
+          fi
+
+          echo "Aligning APK..."
+          $BUILD_TOOLS/zipalign -f -v 4 "$APK" AppClone-aligned.apk
+
+          echo "Signing APK with v1+v2+v3+v4..."
+          $BUILD_TOOLS/apksigner sign \
+            --ks release.keystore \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --v4-signing-enabled true \
+            --out AppClone-signed.apk \
+            AppClone-aligned.apk
+          rm -f AppClone-aligned.apk
+
+          echo "=== Final Verification ==="
+          $BUILD_TOOLS/apksigner verify --print-certs --verbose AppClone-signed.apk
+          echo "=== DONE: APK signed with v1+v2+v3+v4 ==="
+
+      - name: Get version info
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="v2.0.0-$(date +%Y%m%d-%H%M%S)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "AppClone ${{ steps.version.outputs.version }}"
+          body: |
+            ## AppClone - Real APK Cloner v2.0 🚀
+
+            **Version:** ${{ steps.version.outputs.version }}
+            **Build Date:** ${{ steps.version.outputs.date }}
+            **Min Android:** 8.0 (API 26)
+            **Target Android:** 14 (API 34)
+            **Architecture:** Java (Core Engine) + Kotlin (UI Layer)
+            **Signing:** v1 + v2 + v3 + v4
+
+            ### What's New in v2.0:
+            - ✅ **Real APK Cloning**: Modifies package name in binary manifest & DEX files
+            - ✅ **Independent APK**: Creates actual signed APK you can install
+            - ✅ **Auto Install**: Automatically triggers APK installation after cloning
+            - ✅ **No Root Required**: Works without root or special permissions
+            - ✅ **No Work Profile**: Removed problematic Work Profile dependency
+            - ✅ **Material 3 Design**: Modern UI with Dynamic Colors
+            - ✅ **Dark Mode**: Full dark theme support
+            - ✅ **Clone Progress**: Real-time progress tracking during clone
+
+            ### How It Works:
+            1. Select an app to clone
+            2. AppClone extracts the source APK
+            3. Modifies the package name in AndroidManifest.xml and classes.dex
+            4. Signs the modified APK with v1 scheme (on-device)
+            5. Triggers installation of the cloned APK
+            6. The cloned app runs independently alongside the original
+
+            ### Supported Apps:
+            - Facebook & Messenger
+            - Zalo
+            - WhatsApp
+            - Instagram
+            - Telegram
+            - Snapchat
+            - Twitter/X
+            - Discord
+            - And virtually any other app!
+
+            ### Installation:
+            1. Download the APK below
+            2. Enable "Install from unknown sources" for AppClone
+            3. Install and open AppClone
+            4. Select an app and tap "Clone"
+          files: AppClone-signed.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppClone-APK
+          path: AppClone-signed.apk
+          retention-days: 30

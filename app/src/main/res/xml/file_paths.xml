@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- External files directory for cloned APKs -->
+    <external-files-path name="cloned_apks" path="cloned_apks/" />
+    <!-- Cache directory for temporary work files -->
+    <cache-path name="clone_cache" path="clone_work/" />
+    <cache-path name="clone_output" path="clone_output/" />
+    <!-- External cache for wider compatibility -->
+    <external-cache-path name="external_cloned_apks" path="cloned_apks/" />
+</paths>
