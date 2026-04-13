@@ -76,12 +76,8 @@ class AppListFragment : Fragment() {
 
     private fun setupChips() {
         binding.chipAll.setOnClickListener {
-            binding.chipGroup.clearOnCheckedChangeListeners()
             binding.chipAll.isChecked = true
             viewModel.loadAllApps()
-            binding.chipGroup.setOnCheckedChangeListener { _, _ ->
-                handleChipSelection()
-            }
         }
 
         binding.chipPopular.setOnClickListener {
