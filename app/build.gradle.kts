@@ -128,10 +128,7 @@ dependencies {
     // Splash Screen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    // BouncyCastle for APK signing (certificate + PKCS#7)
-    // R8/ProGuard will strip unused BC classes in release builds
-    implementation("org.bouncycastle:bcprov-jdk18on:1.78")
-    implementation("org.bouncycastle:bcpkix-jdk18on:1.78")
+    // Pure Java APK signing - no external crypto dependencies needed
 
     // Testing
     testImplementation("junit:junit:4.13.2")

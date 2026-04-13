@@ -7,26 +7,10 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.zip.*;
 
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.BasicConstraints;
-import org.bouncycastle.asn1.x509.Extension;
-import org.bouncycastle.asn1.x509.KeyUsage;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
-import org.bouncycastle.cms.CMSProcessableByteArray;
-import org.bouncycastle.cms.CMSSignedData;
-import org.bouncycastle.cms.CMSSignedDataGenerator;
-import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
-
 /**
  * APK Signing utility supporting both V1 (JAR) and V2 signing schemes.
+ * Pure Java implementation - NO external dependencies.
  * Uses streaming to avoid OOM on large APKs.
- * Uses BouncyCastle for certificate generation and V1 PKCS#7 signing.
- * Implements APK Signature Scheme V2 natively for maximum compatibility.
  */
 public class ApkSignerUtil {
 
@@ -39,25 +23,21 @@ public class ApkSignerUtil {
     private static final int SIGNATURE_ALGORITHM_RSA_PKCS1_V1_5_WITH_SHA256 = 0x0103;
     private static final int V2_CHUNK_SIZE = 1048576; // 1 MB
 
-    static {
-        try {
-            if (Security.getProvider("BC") == null) {
-                Security.insertProviderAt(
-                    new org.bouncycastle.jce.provider.BouncyCastleProvider(), 2);
-            }
-        } catch (Exception e) {
-            android.util.Log.e(TAG, "Failed to register BC", e);
-        }
-    }
-
     // ======================== PUBLIC API ========================
 
     public static void signApk(File inputApk, File outputApk) throws Exception {
-        // Generate RSA key pair and self-signed certificate
+        // Generate RSA key pair
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair keyPair = kpg.generateKeyPair();
-        X509Certificate cert = generateCertificate(keyPair);
+
+        // Generate self-signed X.509 certificate (manual DER, fixed encoding)
+        long now = System.currentTimeMillis();
+        X509Certificate cert = createSelfSignedCertificate(
+                keyPair,
+                "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN",
+                new Date(now - 86400000L),
+                new Date(now + 30L * 365 * 24 * 60 * 60 * 1000));
 
         // Phase 1: V1 signing (streaming, OOM-safe) -> temp file
         File v1File = new File(outputApk.getParentFile(),
@@ -76,14 +56,9 @@ public class ApkSignerUtil {
 
     // ======================== V1 SIGNING (streaming) ========================
 
-    /**
-     * Build V1 (JAR) signed APK using two-pass streaming.
-     * Pass 1: Compute SHA-256 digests of all entries (16KB buffer, no full load).
-     * Pass 2: Stream-copy entries + write META-INF signature files.
-     */
     private static void buildV1Signed(File inputApk, File outputApk,
                                        KeyPair keyPair, X509Certificate cert) throws Exception {
-        // Pass 1: Compute entry digests (streaming)
+        // Pass 1: Compute SHA-256 digests of all entries (streaming)
         LinkedHashMap<String, byte[]> digestMap = new LinkedHashMap<>();
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         try (ZipFile zf = new ZipFile(inputApk)) {
@@ -105,7 +80,7 @@ public class ApkSignerUtil {
             }
         }
 
-        // Build MANIFEST.MF from pre-computed digests
+        // Build MANIFEST.MF
         StringBuilder manifest = new StringBuilder();
         manifest.append("Manifest-Version: 1.0\r\n");
         manifest.append("Created-By: 1.0 (AppClone Signer)\r\n\r\n");
@@ -121,20 +96,18 @@ public class ApkSignerUtil {
         // Build .SF signature file
         byte[] sfBytes = buildSignatureFile(manifestBytes, manifestStr);
 
-        // Build .RSA PKCS#7 signature block (BouncyCastle CMS)
-        byte[] rsaBytes = buildPKCS7(sfBytes, keyPair.getPrivate(), cert);
+        // Build .RSA PKCS#7 signature block (manual DER)
+        byte[] rsaBytes = createPkcs7Signature(sfBytes, keyPair.getPrivate(), cert);
 
         // Pass 2: Write signed ZIP (streaming)
         try (ZipFile zf = new ZipFile(inputApk);
              ZipOutputStream zos = new ZipOutputStream(
                      new BufferedOutputStream(new FileOutputStream(outputApk)))) {
 
-            // MANIFEST.MF must come first
             zos.putNextEntry(new ZipEntry("META-INF/MANIFEST.MF"));
             zos.write(manifestBytes);
             zos.closeEntry();
 
-            // Stream-copy all non-META-INF entries
             Enumeration<? extends ZipEntry> entries = zf.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry entry = entries.nextElement();
@@ -151,35 +124,27 @@ public class ApkSignerUtil {
                 zos.closeEntry();
             }
 
-            // .SF
             zos.putNextEntry(new ZipEntry("META-INF/" + SIGNER_NAME + ".SF"));
             zos.write(sfBytes);
             zos.closeEntry();
 
-            // .RSA
             zos.putNextEntry(new ZipEntry("META-INF/" + SIGNER_NAME + ".RSA"));
             zos.write(rsaBytes);
             zos.closeEntry();
         }
     }
 
-    /**
-     * Build .SF (Signature File) from MANIFEST.MF.
-     * Contains digests of the entire manifest and per-entry sections.
-     */
     private static byte[] buildSignatureFile(byte[] manifestBytes, String manifestStr) throws Exception {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         StringBuilder sb = new StringBuilder();
         sb.append("Signature-Version: 1.0\r\n");
         sb.append("Created-By: 1.0 (AppClone Signer)\r\n");
 
-        // Digest of entire manifest
         md.reset();
         sb.append("SHA-256-Digest-Manifest: ")
                 .append(Base64.getEncoder().encodeToString(md.digest(manifestBytes)))
                 .append("\r\n");
 
-        // Digest of main attributes section
         int firstEnd = manifestStr.indexOf("\r\n\r\n");
         if (firstEnd > 0) {
             md.reset();
@@ -190,23 +155,20 @@ public class ApkSignerUtil {
         }
         sb.append("\r\n");
 
-        // Per-entry section digests
         int searchFrom = 0;
         while (searchFrom < manifestStr.length()) {
             int nameStart = manifestStr.indexOf("Name: ", searchFrom);
             if (nameStart < 0) break;
-
             int sectionEnd = manifestStr.indexOf("\r\n\r\n", nameStart);
             if (sectionEnd < 0) break;
-            sectionEnd += 4; // include the \r\n\r\n
+            sectionEnd += 4;
 
             String section = manifestStr.substring(nameStart, sectionEnd);
             md.reset();
-            sb.append(section);
-            // Replace/add digest line
             String digestLine = "SHA-256-Digest: "
                     + Base64.getEncoder().encodeToString(
                     md.digest(section.trim().getBytes("UTF-8")));
+            sb.append(section);
             sb.append(digestLine).append("\r\n\r\n");
 
             searchFrom = sectionEnd;
@@ -215,112 +177,222 @@ public class ApkSignerUtil {
         return sb.toString().getBytes("UTF-8");
     }
 
+    // ======================== CERTIFICATE GENERATION ========================
+
     /**
-     * Build PKCS#7 (.RSA) signature block using BouncyCastle CMS API.
+     * Generate self-signed X.509v3 certificate using manual DER encoding.
+     * Fixed: encodeDN() wraps each ATV in SEQUENCE before SET (fixes WRONG_TAG).
      */
-    private static byte[] buildPKCS7(byte[] sfBytes, PrivateKey privateKey,
-                                      X509Certificate cert) throws Exception {
-        CMSSignedDataGenerator gen = new CMSSignedDataGenerator();
+    private static X509Certificate createSelfSignedCertificate(
+            KeyPair keyPair, String dn, Date startDate, Date endDate) throws Exception {
+        // Build TBS Certificate
+        byte[] tbsContent = buildTBSCertificate(keyPair, dn, startDate, endDate);
+        byte[] tbsCertDer = wrapTag(0x30, tbsContent);
 
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA")
-                .build(privateKey);
+        // Sign the TBS certificate
+        Signature sig = Signature.getInstance("SHA256withRSA");
+        sig.initSign(keyPair.getPrivate());
+        sig.update(tbsCertDer);
+        byte[] signature = sig.sign();
 
-        gen.addSignerInfoGenerator(
-                new JcaSignerInfoGeneratorBuilder(
-                        new JcaDigestCalculatorProviderBuilder().build()
-                ).build(signer, cert));
+        // Build Certificate: SEQUENCE { tbsCert, sigAlgId, signature BIT STRING }
+        byte[] certContent = concat(
+                tbsCertDer,
+                buildAlgIdSeq(new int[]{1, 2, 840, 113549, 1, 1, 11}),
+                buildBitString(signature));
+        byte[] certDer = wrapTag(0x30, certContent);
 
-        gen.addCertificate(new X509CertificateHolder(cert.getEncoded()));
+        // Validate by parsing with CertificateFactory
+        java.security.cert.CertificateFactory cf =
+                java.security.cert.CertificateFactory.getInstance("X.509");
+        return (X509Certificate) cf.generateCertificate(
+                new ByteArrayInputStream(certDer));
+    }
 
-        CMSSignedData signedData = gen.generate(
-                new CMSProcessableByteArray(sfBytes), true);
+    private static byte[] buildTBSCertificate(KeyPair keyPair, String dn,
+                                               Date startDate, Date endDate) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        // version [0] EXPLICIT INTEGER v3
+        out.write(new byte[]{(byte) 0xA0, 0x03, 0x02, 0x01, 0x02});
+        // serialNumber
+        out.write(buildInteger(BigInteger.valueOf(
+                Math.abs(System.currentTimeMillis())).toByteArray()));
+        // signature algorithm
+        out.write(buildAlgIdSeq(new int[]{1, 2, 840, 113549, 1, 1, 11}));
+        // issuer (using fixed DN encoding)
+        out.write(encodeDN(dn));
+        // validity
+        byte[] validity = concat(buildUTCTime(startDate), buildUTCTime(endDate));
+        out.write(0x30);
+        writeDERLength(out, validity.length);
+        out.write(validity);
+        // subject
+        out.write(encodeDN(dn));
+        // subjectPublicKeyInfo
+        out.write(keyPair.getPublic().getEncoded());
+        return out.toByteArray();
+    }
 
-        return signedData.getEncoded();
+    /**
+     * Encode X.500 Distinguished Name in DER.
+     * Fixed: Each ATV is SEQUENCE { OID, value } then wrapped in SET.
+     * Full structure: Name = SEQUENCE { SET { SEQUENCE { OID, UTF8String } } ... }
+     */
+    private static byte[] encodeDN(String dn) throws IOException {
+        String[] parts = dn.split(", ");
+        ByteArrayOutputStream setOut = new ByteArrayOutputStream();
+        for (String part : parts) {
+            String[] kv = part.split("=", 2);
+            byte[] oidBytes = encodeOID(getDNOid(kv[0].trim()));
+            byte[] valueBytes = kv[1].trim().getBytes();
+            // UTF8String TLV for value
+            byte[] valueTLV = new byte[1 + getDERLengthSize(valueBytes.length) + valueBytes.length];
+            valueTLV[0] = 0x0C; // UTF8String
+            writeDERLengthTo(valueTLV, 1, valueBytes.length);
+            System.arraycopy(valueBytes, 0, valueTLV,
+                    1 + getDERLengthSize(valueBytes.length), valueBytes.length);
+            // AttributeTypeAndValue = SEQUENCE { OID, UTF8String }
+            byte[] atvContent = concat(oidBytes, valueTLV);
+            byte[] atvSeq = wrapTag(0x30, atvContent);
+            // RelativeDistinguishedName = SET { ATV }
+            byte[] rdnSet = wrapTag(0x31, atvSeq);
+            setOut.write(rdnSet);
+        }
+        // Name = SEQUENCE { RDN, RDN, ... }
+        return wrapTag(0x30, setOut.toByteArray());
+    }
+
+    private static int[] getDNOid(String type) {
+        switch (type) {
+            case "CN": return new int[]{2, 5, 4, 3};
+            case "OU": return new int[]{2, 5, 4, 11};
+            case "O":  return new int[]{2, 5, 4, 10};
+            case "L":  return new int[]{2, 5, 4, 7};
+            case "ST": return new int[]{2, 5, 4, 8};
+            case "C":  return new int[]{2, 5, 4, 6};
+            default:  return new int[]{2, 5, 4, 3};
+        }
+    }
+
+    // ======================== PKCS#7 SIGNATURE ========================
+
+    /**
+     * Create PKCS#7 signature block using manual DER encoding.
+     * SignedData with encapsulated content, one signer, one certificate.
+     */
+    private static byte[] createPkcs7Signature(byte[] sfBytes, PrivateKey privateKey,
+                                                 X509Certificate cert) throws Exception {
+        Signature sig = Signature.getInstance("SHA256withRSA");
+        sig.initSign(privateKey);
+        sig.update(sfBytes);
+        byte[] signatureBytes = sig.sign();
+
+        ByteArrayOutputStream sd = new ByteArrayOutputStream();
+        // version
+        sd.write(new byte[]{0x02, 0x01, 0x01});
+        // digestAlgorithms SET
+        byte[] digestAlg = buildAlgIdSeq(new int[]{2, 16, 840, 1, 101, 3, 4, 2, 1});
+        sd.write(wrapTag(0x31, digestAlg));
+        // encapContentInfo
+        ByteArrayOutputStream eci = new ByteArrayOutputStream();
+        eci.write(encodeOID(new int[]{1, 2, 840, 113549, 1, 7, 1}));
+        byte[] contentOctet = buildOctetString(sfBytes);
+        byte[] explicit0 = new byte[2 + contentOctet.length];
+        explicit0[0] = (byte) 0xA0;
+        writeDERLengthTo(explicit0, 1, contentOctet.length);
+        System.arraycopy(contentOctet, 0, explicit0, 2, contentOctet.length);
+        eci.write(explicit0);
+        sd.write(wrapTag(0x30, eci.toByteArray()));
+        // certificates [0] EXPLICIT
+        byte[] certDer = cert.getEncoded();
+        byte[] certWrap = new byte[2 + certDer.length];
+        certWrap[0] = (byte) 0xA0;
+        writeDERLengthTo(certWrap, 1, certDer.length);
+        System.arraycopy(certDer, 0, certWrap, 2, certDer.length);
+        sd.write(certWrap);
+        // signerInfos SET
+        ByteArrayOutputStream si = new ByteArrayOutputStream();
+        si.write(new byte[]{0x02, 0x01, 0x01}); // version
+        // IssuerAndSerialNumber
+        ByteArrayOutputStream isan = new ByteArrayOutputStream();
+        isan.write(cert.getIssuerX500Principal().getEncoded());
+        byte[] serial = cert.getSerialNumber().toByteArray();
+        isan.write(0x02);
+        writeDERLength(isan, serial.length);
+        isan.write(serial);
+        si.write(wrapTag(0x30, isan.toByteArray()));
+        si.write(buildAlgIdSeq(new int[]{2, 16, 840, 1, 101, 3, 4, 2, 1})); // digest alg
+        si.write(buildAlgIdSeq(new int[]{1, 2, 840, 113549, 1, 1, 11})); // sig alg
+        si.write(buildOctetString(signatureBytes));
+        sd.write(wrapTag(0x31, si.toByteArray()));
+
+        byte[] signedDataSeq = wrapTag(0x30, sd.toByteArray());
+        // ContentInfo
+        ByteArrayOutputStream ci = new ByteArrayOutputStream();
+        ci.write(encodeOID(new int[]{1, 2, 840, 113549, 1, 7, 2}));
+        byte[] sdExplicit = new byte[2 + signedDataSeq.length];
+        sdExplicit[0] = (byte) 0xA0;
+        writeDERLengthTo(sdExplicit, 1, signedDataSeq.length);
+        System.arraycopy(signedDataSeq, 0, sdExplicit, 2, signedDataSeq.length);
+        ci.write(sdExplicit);
+        return wrapTag(0x30, ci.toByteArray());
     }
 
     // ======================== V2 SIGNING ========================
 
-    /**
-     * Add APK Signature Scheme V2 block to the V1-signed APK.
-     * The V2 block is inserted between the ZIP entries and the Central Directory.
-     * Uses streaming to avoid OOM on large APKs.
-     */
     private static void addV2SigningBlock(File v1File, File outputFile,
                                            KeyPair keyPair, X509Certificate cert) throws Exception {
         long fileLen = v1File.length();
-
-        // Step 1: Find EOCD (End of Central Directory)
         int eocdOffset = findEOCD(v1File);
         int eocdSize = (int) (fileLen - eocdOffset);
 
-        // Step 2: Read EOCD header to get CD offset and CD size
-        int cdOffset, cdSize;
         byte[] eocdBuf = new byte[eocdSize];
         try (RandomAccessFile raf = new RandomAccessFile(v1File, "r")) {
             raf.seek(eocdOffset);
             raf.readFully(eocdBuf);
         }
-        cdSize = readUInt32LE(eocdBuf, 12);
-        cdOffset = readUInt32LE(eocdBuf, 16);
+        int cdSize = readUInt32LE(eocdBuf, 12);
+        int cdOffset = readUInt32LE(eocdBuf, 16);
 
-        // Step 3: Compute V2 content digests (streaming, chunked SHA-256)
-        // Section 0: ZIP entries (offset 0 to cdOffset)
+        // Compute V2 digests (streaming)
         byte[] digest0 = computeChunkedDigest(v1File, 0, cdOffset);
-        // Section 1: Central Directory
         byte[] digest1 = computeChunkedDigest(v1File, cdOffset, cdSize);
-        // Section 2: EOCD with zeroed CD offset field
         byte[] eocdZeroed = eocdBuf.clone();
         eocdZeroed[16] = 0; eocdZeroed[17] = 0;
         eocdZeroed[18] = 0; eocdZeroed[19] = 0;
         byte[] digest2 = computeChunkedDigest(eocdZeroed, 0, eocdZeroed.length);
 
-        // Step 4: Build signed data
+        // Build signed data and sign it
         byte[] signedDataBytes = buildV2SignedData(digest0, digest1, digest2, cert);
-
-        // Step 5: Sign the signed data
         Signature sig = Signature.getInstance("SHA256withRSA");
         sig.initSign(keyPair.getPrivate());
         sig.update(signedDataBytes);
         byte[] signatureBytes = sig.sign();
 
-        // Step 6: Build APK Signing Block
+        // Build V2 signing block
         byte[] signingBlock = buildV2SigningBlock(signedDataBytes, signatureBytes,
                 keyPair.getPublic().getEncoded());
 
-        // Step 7: Write final APK: entries | signing_block | CD | EOCD (updated offset)
+        // Write final APK
         int newCdOffset = cdOffset + signingBlock.length;
         writeFinalApk(v1File, outputFile, cdOffset, cdSize, eocdBuf,
                 signingBlock, newCdOffset);
     }
 
-    /**
-     * Build V2 signed data structure (what gets signed).
-     * Format: digests || certificates || additional_attributes
-     * Each section is length-prefixed (uint32 BE).
-     */
-    private static byte[] buildV2SignedData(byte[] digest0, byte[] digest1,
-                                              byte[] digest2, X509Certificate cert) throws Exception {
+    private static byte[] buildV2SignedData(byte[] d0, byte[] d1, byte[] d2,
+                                              X509Certificate cert) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-
-        // --- Digests (length-prefixed) ---
+        // Digests
         ByteArrayOutputStream digests = new ByteArrayOutputStream();
-        // Section 0 digest
-        writeUInt32BE(digests, CONTENT_DIGEST_CHUNKED_SHA256);
-        writeUInt32BE(digests, digest0.length);
-        digests.write(digest0);
-        // Section 1 digest
-        writeUInt32BE(digests, CONTENT_DIGEST_CHUNKED_SHA256);
-        writeUInt32BE(digests, digest1.length);
-        digests.write(digest1);
-        // Section 2 digest
-        writeUInt32BE(digests, CONTENT_DIGEST_CHUNKED_SHA256);
-        writeUInt32BE(digests, digest2.length);
-        digests.write(digest2);
+        for (byte[] d : new byte[][]{d0, d1, d2}) {
+            writeUInt32BE(digests, CONTENT_DIGEST_CHUNKED_SHA256);
+            writeUInt32BE(digests, d.length);
+            digests.write(d);
+        }
         byte[] digestsBytes = digests.toByteArray();
         writeUInt32BE(out, digestsBytes.length);
         out.write(digestsBytes);
-
-        // --- Certificates (length-prefixed) ---
+        // Certificates
         byte[] certDer = cert.getEncoded();
         ByteArrayOutputStream certs = new ByteArrayOutputStream();
         writeUInt32BE(certs, certDer.length);
@@ -328,23 +400,16 @@ public class ApkSignerUtil {
         byte[] certsBytes = certs.toByteArray();
         writeUInt32BE(out, certsBytes.length);
         out.write(certsBytes);
-
-        // --- Additional attributes (empty) ---
+        // Additional attributes (empty)
         writeUInt32BE(out, 0);
-
         return out.toByteArray();
     }
 
-    /**
-     * Build the full APK Signing Block.
-     * Format: uint64 size | ID-value pairs | uint64 size
-     */
     private static byte[] buildV2SigningBlock(byte[] signedData, byte[] signature,
                                                byte[] publicKey) throws Exception {
-        // --- Build signer ---
+        // Signer = signedData || signatures || publicKeyKey
         ByteArrayOutputStream signer = new ByteArrayOutputStream();
-
-        // Signatures (length-prefixed)
+        // Signatures
         ByteArrayOutputStream sigs = new ByteArrayOutputStream();
         writeUInt32BE(sigs, SIGNATURE_ALGORITHM_RSA_PKCS1_V1_5_WITH_SHA256);
         writeUInt32BE(sigs, signature.length);
@@ -352,86 +417,62 @@ public class ApkSignerUtil {
         byte[] sigsBytes = sigs.toByteArray();
         writeUInt32BE(signer, sigsBytes.length);
         signer.write(sigsBytes);
-
-        // Public key (length-prefixed)
+        // Public key
         writeUInt32BE(signer, publicKey.length);
         signer.write(publicKey);
+        byte[] signerFull = concat(signedData, signer.toByteArray());
 
-        // Prepend signed data to signer
-        ByteArrayOutputStream signerFull = new ByteArrayOutputStream();
-        signerFull.write(signedData);
-        signerFull.write(signer.toByteArray());
-        byte[] signerBytes = signerFull.toByteArray();
+        // Signers (length-prefixed)
+        ByteArrayOutputStream signersOut = new ByteArrayOutputStream();
+        writeUInt32BE(signersOut, signerFull.length);
+        signersOut.write(signerFull);
+        byte[] signersBytes = signersOut.toByteArray();
 
-        // --- Build signers sequence (length-prefixed) ---
-        ByteArrayOutputStream signers = new ByteArrayOutputStream();
-        writeUInt32BE(signers, signerBytes.length);
-        signers.write(signerBytes);
-        byte[] signersBytes = signers.toByteArray();
-
-        // --- Build ID-value pair ---
+        // ID-value pair
         ByteArrayOutputStream pair = new ByteArrayOutputStream();
-        // Pair value = signers (uint32 BE length + signers data)
+        writeUInt64LE(pair, 8L + 4L + signersBytes.length);
+        writeUInt32LE(pair, APK_SIG_V2_BLOCK_ID);
         pair.write(signersBytes);
-        byte[] pairValue = pair.toByteArray();
+        byte[] pairBytes = pair.toByteArray();
 
-        // Pair header: uint64 LE (pair length = 4 + value length)
-        long pairTotalLen = 4L + pairValue.length;
-        long pairWithHeaderLen = 8L + pairTotalLen;
-        ByteArrayOutputStream pairFull = new ByteArrayOutputStream();
-        writeUInt64LE(pairFull, pairWithHeaderLen);
-        writeUInt32LE(pairFull, APK_SIG_V2_BLOCK_ID);
-        pairFull.write(pairValue);
-        byte[] pairBytes = pairFull.toByteArray();
-
-        // --- Build signing block: uint64 size | pairs | uint64 size ---
+        // Signing block: size | pairs | size
         long blockSize = 8L + pairBytes.length + 8L;
         ByteArrayOutputStream block = new ByteArrayOutputStream();
         writeUInt64LE(block, blockSize);
         block.write(pairBytes);
         writeUInt64LE(block, blockSize);
-
         return block.toByteArray();
     }
 
-    /**
-     * Write the final APK: entries | V2 signing block | CD | EOCD with updated offset.
-     * All streaming with 64KB buffer.
-     */
     private static void writeFinalApk(File input, File output,
                                        int cdOffset, int cdSize,
                                        byte[] eocdOriginal, byte[] signingBlock,
                                        int newCdOffset) throws Exception {
         byte[] buf = new byte[65536];
-
         try (RandomAccessFile in = new RandomAccessFile(input, "r");
              BufferedOutputStream out = new BufferedOutputStream(
                      new FileOutputStream(output))) {
-
-            // 1. Copy ZIP entries (offset 0 to cdOffset)
+            // Entries
             in.seek(0);
-            long remaining = cdOffset;
-            while (remaining > 0) {
-                int toRead = (int) Math.min(buf.length, remaining);
-                in.readFully(buf, 0, toRead);
-                out.write(buf, 0, toRead);
-                remaining -= toRead;
+            long rem = cdOffset;
+            while (rem > 0) {
+                int n = (int) Math.min(buf.length, rem);
+                in.readFully(buf, 0, n);
+                out.write(buf, 0, n);
+                rem -= n;
             }
-
-            // 2. Write V2 signing block
+            // V2 block
             out.write(signingBlock);
-
-            // 3. Copy Central Directory
+            // CD
             in.seek(cdOffset);
-            remaining = cdSize;
-            while (remaining > 0) {
-                int toRead = (int) Math.min(buf.length, remaining);
-                in.readFully(buf, 0, toRead);
-                out.write(buf, 0, toRead);
-                remaining -= toRead;
+            rem = cdSize;
+            while (rem > 0) {
+                int n = (int) Math.min(buf.length, rem);
+                in.readFully(buf, 0, n);
+                out.write(buf, 0, n);
+                rem -= n;
             }
-
-            // 4. Write EOCD with updated CD offset
+            // EOCD with updated offset
             byte[] eocdOut = eocdOriginal.clone();
             eocdOut[16] = (byte) (newCdOffset & 0xFF);
             eocdOut[17] = (byte) ((newCdOffset >> 8) & 0xFF);
@@ -441,159 +482,213 @@ public class ApkSignerUtil {
         }
     }
 
-    // ======================== DIGEST HELPERS ========================
+    // ======================== HELPERS ========================
 
-    /**
-     * Compute chunked SHA-256 digest of a region of a file.
-     * Reads in 1MB chunks, each prefixed with 4-byte BE length.
-     * Uses streaming - never loads the entire region into memory.
-     */
-    private static byte[] computeChunkedDigest(File file, long offset, int length) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        byte[] buf = new byte[V2_CHUNK_SIZE];
-        byte[] lenPrefix = new byte[4];
-
-        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
-            int remaining = length;
-            long pos = offset;
-            while (remaining > 0) {
-                int chunkSize = Math.min(V2_CHUNK_SIZE, remaining);
-                raf.seek(pos);
-                raf.readFully(buf, 0, chunkSize);
-
-                // 4-byte BE length prefix
-                lenPrefix[0] = (byte) ((chunkSize >> 24) & 0xFF);
-                lenPrefix[1] = (byte) ((chunkSize >> 16) & 0xFF);
-                lenPrefix[2] = (byte) ((chunkSize >> 8) & 0xFF);
-                lenPrefix[3] = (byte) (chunkSize & 0xFF);
-                md.update(lenPrefix);
-                md.update(buf, 0, chunkSize);
-
-                pos += chunkSize;
-                remaining -= chunkSize;
-            }
-        }
-
-        return md.digest();
-    }
-
-    /**
-     * Compute chunked SHA-256 digest of a byte array.
-     * Used for the small EOCD section.
-     */
-    private static byte[] computeChunkedDigest(byte[] data, int offset, int length) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        byte[] lenPrefix = new byte[4];
-        int remaining = length;
-        int pos = offset;
-        while (remaining > 0) {
-            int chunkSize = Math.min(V2_CHUNK_SIZE, remaining);
-            lenPrefix[0] = (byte) ((chunkSize >> 24) & 0xFF);
-            lenPrefix[1] = (byte) ((chunkSize >> 16) & 0xFF);
-            lenPrefix[2] = (byte) ((chunkSize >> 8) & 0xFF);
-            lenPrefix[3] = (byte) (chunkSize & 0xFF);
-            md.update(lenPrefix);
-            md.update(data, pos, chunkSize);
-            pos += chunkSize;
-            remaining -= chunkSize;
-        }
-        return md.digest();
-    }
-
-    // ======================== EOCD HELPERS ========================
-
-    /**
-     * Find EOCD (End of Central Directory) by scanning backwards for the signature.
-     * EOCD signature: 0x06054b50 (little-endian: 50 4b 05 06)
-     */
     private static int findEOCD(File file) throws IOException {
         int searchSize = Math.min((int) file.length(), 65535 + 22);
         byte[] buf = new byte[searchSize];
-
         try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
             raf.seek(file.length() - searchSize);
             raf.readFully(buf);
         }
-
         for (int i = buf.length - 22; i >= 0; i--) {
             if (buf[i] == 0x50 && buf[i + 1] == 0x4b &&
                     buf[i + 2] == 0x05 && buf[i + 3] == 0x06) {
                 return (int) (file.length() - searchSize + i);
             }
         }
-        throw new IOException("EOCD not found in APK");
+        throw new IOException("EOCD not found");
     }
 
-    // ======================== BYTE ORDER HELPERS ========================
-
-    private static void writeUInt32BE(ByteArrayOutputStream out, int value) {
-        out.write((value >> 24) & 0xFF);
-        out.write((value >> 16) & 0xFF);
-        out.write((value >> 8) & 0xFF);
-        out.write(value & 0xFF);
+    private static byte[] computeChunkedDigest(File file, long offset, int length) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] buf = new byte[V2_CHUNK_SIZE];
+        byte[] lp = new byte[4];
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+            int rem = length;
+            long pos = offset;
+            while (rem > 0) {
+                int chunk = Math.min(V2_CHUNK_SIZE, rem);
+                raf.seek(pos);
+                raf.readFully(buf, 0, chunk);
+                lp[0] = (byte) ((chunk >> 24) & 0xFF);
+                lp[1] = (byte) ((chunk >> 16) & 0xFF);
+                lp[2] = (byte) ((chunk >> 8) & 0xFF);
+                lp[3] = (byte) (chunk & 0xFF);
+                md.update(lp);
+                md.update(buf, 0, chunk);
+                pos += chunk;
+                rem -= chunk;
+            }
+        }
+        return md.digest();
     }
 
-    private static void writeUInt32BE(byte[] buf, int offset, int value) {
-        buf[offset] = (byte) ((value >> 24) & 0xFF);
-        buf[offset + 1] = (byte) ((value >> 16) & 0xFF);
-        buf[offset + 2] = (byte) ((value >> 8) & 0xFF);
-        buf[offset + 3] = (byte) (value & 0xFF);
+    private static byte[] computeChunkedDigest(byte[] data, int offset, int length) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] lp = new byte[4];
+        int rem = length, pos = offset;
+        while (rem > 0) {
+            int chunk = Math.min(V2_CHUNK_SIZE, rem);
+            lp[0] = (byte) ((chunk >> 24) & 0xFF);
+            lp[1] = (byte) ((chunk >> 16) & 0xFF);
+            lp[2] = (byte) ((chunk >> 8) & 0xFF);
+            lp[3] = (byte) (chunk & 0xFF);
+            md.update(lp);
+            md.update(data, pos, chunk);
+            pos += chunk;
+            rem -= chunk;
+        }
+        return md.digest();
     }
 
-    private static void writeUInt32LE(ByteArrayOutputStream out, int value) {
-        out.write(value & 0xFF);
-        out.write((value >> 8) & 0xFF);
-        out.write((value >> 16) & 0xFF);
-        out.write((value >> 24) & 0xFF);
+    // --- DER encoding helpers ---
+
+    private static byte[] wrapTag(int tag, byte[] content) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(tag);
+        writeDERLength(out, content.length);
+        out.write(content);
+        return out.toByteArray();
     }
 
-    private static void writeUInt64LE(ByteArrayOutputStream out, long value) {
-        out.write((int) (value & 0xFF));
-        out.write((int) ((value >> 8) & 0xFF));
-        out.write((int) ((value >> 16) & 0xFF));
-        out.write((int) ((value >> 24) & 0xFF));
-        out.write((int) ((value >> 32) & 0xFF));
-        out.write((int) ((value >> 40) & 0xFF));
-        out.write((int) ((value >> 48) & 0xFF));
-        out.write((int) ((value >> 56) & 0xFF));
+    private static byte[] buildAlgIdSeq(int[] oid) throws IOException {
+        return wrapTag(0x30, concat(encodeOID(oid), new byte[]{0x05, 0x00}));
     }
 
-    private static int readUInt32LE(byte[] buf, int offset) {
-        return buf[offset] & 0xFF
-                | (buf[offset + 1] & 0xFF) << 8
-                | (buf[offset + 2] & 0xFF) << 16
-                | (buf[offset + 3] & 0xFF) << 24;
+    private static byte[] buildInteger(byte[] value) throws IOException {
+        if (value[0] < 0) {
+            byte[] padded = new byte[value.length + 1];
+            System.arraycopy(value, 0, padded, 1, value.length);
+            value = padded;
+        }
+        return wrapTag(0x02, value);
     }
 
-    // ======================== CERTIFICATE GENERATION ========================
+    private static byte[] buildOctetString(byte[] data) throws IOException {
+        return wrapTag(0x04, data);
+    }
 
-    /**
-     * Generate a self-signed X.509v3 certificate using BouncyCastle.
-     * Standard Conscrypt-compatible certificate for Android.
-     */
-    private static X509Certificate generateCertificate(KeyPair keyPair) throws Exception {
-        long now = System.currentTimeMillis();
-        Date startDate = new Date(now - 86400000L);
-        Date endDate = new Date(now + 30L * 365 * 24 * 60 * 60 * 1000);
+    private static byte[] buildBitString(byte[] data) throws IOException {
+        byte[] padded = new byte[data.length + 1];
+        System.arraycopy(data, 0, padded, 1, data.length);
+        return wrapTag(0x03, padded);
+    }
 
-        X500Name issuer = new X500Name(
-                "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN");
-        BigInteger serial = BigInteger.valueOf(Math.abs(System.currentTimeMillis()));
+    private static byte[] buildUTCTime(Date date) throws IOException {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyMMddHHmmss'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return wrapTag(0x17, sdf.format(date).getBytes());
+    }
 
-        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(
-                issuer, serial, startDate, endDate, issuer, keyPair.getPublic());
+    private static byte[] encodeOID(int[] oid) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(oid[0] * 40 + oid[1]);
+        for (int i = 2; i < oid.length; i++) {
+            int v = oid[i];
+            if (v < 128) {
+                out.write(v);
+            } else {
+                int numBytes = (32 - Integer.numberOfLeadingZeros(v) + 6) / 7;
+                for (int j = numBytes - 1; j >= 0; j--) {
+                    int b = (v >> (j * 7)) & 0x7F;
+                    if (j > 0) b |= 0x80;
+                    out.write(b);
+                }
+            }
+        }
+        return wrapTag(0x06, out.toByteArray());
+    }
 
-        builder.addExtension(Extension.basicConstraints, true,
-                new BasicConstraints(true));
-        builder.addExtension(Extension.keyUsage, true,
-                new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyCertSign
-                        | KeyUsage.cRLSign));
+    private static void writeDERLength(ByteArrayOutputStream out, int length) throws IOException {
+        if (length < 128) {
+            out.write(length);
+        } else if (length < 256) {
+            out.write(0x81);
+            out.write(length);
+        } else if (length < 65536) {
+            out.write(0x82);
+            out.write((length >> 8) & 0xFF);
+            out.write(length & 0xFF);
+        } else {
+            out.write(0x83);
+            out.write((length >> 16) & 0xFF);
+            out.write((length >> 8) & 0xFF);
+            out.write(length & 0xFF);
+        }
+    }
 
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA")
-                .build(keyPair.getPrivate());
+    private static int writeDERLengthTo(byte[] buf, int pos, int length) {
+        if (length < 128) {
+            buf[pos] = (byte) length;
+            return pos + 1;
+        } else if (length < 256) {
+            buf[pos] = (byte) 0x81;
+            buf[pos + 1] = (byte) length;
+            return pos + 2;
+        } else if (length < 65536) {
+            buf[pos] = (byte) 0x82;
+            buf[pos + 1] = (byte) ((length >> 8) & 0xFF);
+            buf[pos + 2] = (byte) (length & 0xFF);
+            return pos + 3;
+        } else {
+            buf[pos] = (byte) 0x83;
+            buf[pos + 1] = (byte) ((length >> 16) & 0xFF);
+            buf[pos + 2] = (byte) ((length >> 8) & 0xFF);
+            buf[pos + 3] = (byte) (length & 0xFF);
+            return pos + 4;
+        }
+    }
 
-        X509CertificateHolder holder = builder.build(signer);
-        return new JcaX509CertificateConverter().setProvider("BC")
-                .getCertificate(holder);
+    private static int getDERLengthSize(int length) {
+        if (length < 128) return 1;
+        if (length < 256) return 2;
+        if (length < 65536) return 3;
+        return 4;
+    }
+
+    // --- Byte order helpers ---
+
+    private static void writeUInt32BE(ByteArrayOutputStream out, int v) {
+        out.write((v >> 24) & 0xFF);
+        out.write((v >> 16) & 0xFF);
+        out.write((v >> 8) & 0xFF);
+        out.write(v & 0xFF);
+    }
+
+    private static void writeUInt32BE(byte[] buf, int off, int v) {
+        buf[off] = (byte) ((v >> 24) & 0xFF);
+        buf[off + 1] = (byte) ((v >> 16) & 0xFF);
+        buf[off + 2] = (byte) ((v >> 8) & 0xFF);
+        buf[off + 3] = (byte) (v & 0xFF);
+    }
+
+    private static void writeUInt32LE(ByteArrayOutputStream out, int v) {
+        out.write(v & 0xFF);
+        out.write((v >> 8) & 0xFF);
+        out.write((v >> 16) & 0xFF);
+        out.write((v >> 24) & 0xFF);
+    }
+
+    private static void writeUInt64LE(ByteArrayOutputStream out, long v) {
+        for (int i = 0; i < 8; i++)
+            out.write((int) ((v >> (8 * i)) & 0xFF));
+    }
+
+    private static int readUInt32LE(byte[] buf, int off) {
+        return buf[off] & 0xFF | (buf[off + 1] & 0xFF) << 8
+                | (buf[off + 2] & 0xFF) << 16 | (buf[off + 3] & 0xFF) << 24;
+    }
+
+    private static byte[] concat(byte[]... arrays) {
+        int total = 0;
+        for (byte[] a : arrays) total += a.length;
+        byte[] r = new byte[total];
+        int p = 0;
+        for (byte[] a : arrays) {
+            System.arraycopy(a, 0, r, p, a.length);
+            p += a.length;
+        }
+        return r;
     }
 }
