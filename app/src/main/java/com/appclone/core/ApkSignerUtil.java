@@ -9,8 +9,7 @@ import java.util.zip.*;
 
 /**
  * APK Signing utility using V1 (JAR) signing scheme.
- * Uses only standard Java APIs - no external BouncyCastle dependency needed.
- * Creates PKCS#7 signature block with manual DER encoding.
+ * Pure Java implementation - no external dependencies.
  */
 public class ApkSignerUtil {
 
@@ -57,8 +56,7 @@ public class ApkSignerUtil {
 
         X509Certificate cert = createSelfSignedCertificate(
             keyPair, "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN",
-            startDate, endDate
-        );
+            startDate, endDate);
 
         ks.load(null, null);
         ks.setKeyEntry(KEY_ALIAS, keyPair.getPrivate(),
@@ -68,127 +66,84 @@ public class ApkSignerUtil {
         try (FileOutputStream fos = new FileOutputStream(ksFile)) {
             ks.store(fos, "appclone123".toCharArray());
         }
-
         return ks;
     }
 
     private static X509Certificate createSelfSignedCertificate(
             KeyPair keyPair, String dn, Date startDate, Date endDate) throws Exception {
-
-        javax.security.auth.x500.X500Principal principal =
-            new javax.security.auth.x500.X500Principal(dn);
-
-        // Use sun.security.x509 or fallback to a simpler approach
-        // On standard JDK 17, use the built-in cert generation
-        java.security.cert.CertificateFactory cf = java.security.cert.CertificateFactory.getInstance("X.509");
-
-        // Generate a self-signed cert using keytool-like approach via sun classes or manual DER
-        byte[] certBytes = generateSelfSignedCertDER(keyPair, dn, startDate, endDate);
-        ByteArrayInputStream bais = new ByteArrayInputStream(certBytes);
-        return (X509Certificate) cf.generateCertificate(bais);
-    }
-
-    /**
-     * Generate a self-signed X.509 certificate as raw DER bytes.
-     * Uses manual ASN.1 DER encoding - works on any JVM.
-     */
-    private static byte[] generateSelfSignedCertDER(KeyPair keyPair, String dn,
-                                                    Date startDate, Date endDate) throws Exception {
-        // Sign the TBS certificate to get the signature
         Signature sig = Signature.getInstance("SHA256withRSA");
         sig.initSign(keyPair.getPrivate());
 
-        // Build TBSCertificate (to-be-signed)
         byte[] tbsBytes = buildTBSCertificate(keyPair, dn, startDate, endDate);
         sig.update(tbsBytes);
         byte[] signature = sig.sign();
 
-        // Build full certificate: SEQUENCE { tbsCert, sigAlgId, signature }
         ByteArrayOutputStream certOut = new ByteArrayOutputStream();
-        writeLengthPrefixed(certOut, 0x30, () -> {
-            certOut.write(tbsBytes);
-            // signatureAlgorithm: SEQUENCE { OID(sha256WithRSAEncryption), NULL }
-            writeLengthPrefixed(certOut, 0x30, () -> {
-                writeOID(certOut, new int[]{1, 2, 840, 113549, 1, 1, 11}); // sha256WithRSAEncryption
-                certOut.write(0x05, 0x00); // NULL
-            });
-            // signatureValue: BIT STRING
-            certOut.write(0x03);
-            byte[] sigWithBit = new byte[signature.length + 1];
-            sigWithBit[0] = 0;
-            System.arraycopy(signature, 0, sigWithBit, 1, signature.length);
-            writeDERLength(certOut, sigWithBit.length);
-            certOut.write(sigWithBit);
-        });
+        // SEQUENCE { tbsCert, sigAlgId, signature }
+        byte[] inner = concat(
+            tbsBytes,
+            buildAlgIdSeq(new int[]{1, 2, 840, 113549, 1, 1, 11}),
+            buildBitString(signature)
+        );
+        certOut.write(0x30);
+        writeDERLength(certOut, inner.length);
+        certOut.write(inner);
 
-        return certOut.toByteArray();
+        java.security.cert.CertificateFactory cf = java.security.cert.CertificateFactory.getInstance("X.509");
+        return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certOut.toByteArray()));
     }
 
     private static byte[] buildTBSCertificate(KeyPair keyPair, String dn,
-                                               Date startDate, Date endDate) throws Exception {
+                                               Date startDate, Date endDate) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-
         // version [0] EXPLICIT INTEGER v3
-        out.write(0xA0, 0x03, 0x02, 0x01, 0x02);
-
+        out.write(new byte[]{(byte)0xA0, 0x03, 0x02, 0x01, 0x02});
         // serialNumber INTEGER
-        writeLengthPrefixed(out, 0x02, () -> {
-            byte[] serial = BigInteger.valueOf(System.currentTimeMillis()).toByteArray();
-            out.write(serial);
-        });
-
-        // signature algorithm
-        writeLengthPrefixed(out, 0x30, () -> {
-            writeOID(out, new int[]{1, 2, 840, 113549, 1, 1, 11});
-            out.write(0x05, 0x00); // NULL
-        });
-
-        // issuer: Raw DN encoding
-        byte[] issuerBytes = encodeDN(dn);
-        out.write(issuerBytes);
-
-        // validity: SEQUENCE { notBefore UTCTime, notAfter UTCTime }
-        writeLengthPrefixed(out, 0x30, () -> {
-            writeUTCTime(out, startDate);
-            writeUTCTime(out, endDate);
-        });
-
-        // subject: same as issuer for self-signed
+        out.write(buildInteger(BigInteger.valueOf(System.currentTimeMillis()).toByteArray()));
+        // signature algorithm SEQUENCE { OID, NULL }
+        out.write(buildAlgIdSeq(new int[]{1, 2, 840, 113549, 1, 1, 11}));
+        // issuer
         out.write(encodeDN(dn));
-
-        // subjectPublicKeyInfo
-        byte[] spkiBytes = keyPair.getPublic().getEncoded(); // X.509 SPKI already in DER
-        out.write(spkiBytes);
-
+        // validity SEQUENCE { notBefore, notAfter }
+        byte[] validity = concat(buildUTCTime(startDate), buildUTCTime(endDate));
+        out.write(0x30);
+        writeDERLength(out, validity.length);
+        out.write(validity);
+        // subject
+        out.write(encodeDN(dn));
+        // subjectPublicKeyInfo (from key)
+        out.write(keyPair.getPublic().getEncoded());
         return out.toByteArray();
     }
 
-    private static byte[] encodeDN(String dn) {
-        // Parse "CN=AppClone, OU=Dev, O=AppClone, L=HCM, ST=HC, C=VN"
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
+    private static byte[] encodeDN(String dn) throws IOException {
         String[] parts = dn.split(", ");
-        // Build SET of SEQUENCE of AttributeTypeAndValue
         ByteArrayOutputStream setOut = new ByteArrayOutputStream();
         for (String part : parts) {
             String[] kv = part.split("=", 2);
-            String attrType = kv[0].trim();
-            String attrValue = kv[1].trim();
+            byte[] oidBytes = encodeOID(getDNOid(kv[0].trim()));
+            byte[] valueBytes = kv[1].trim().getBytes();
+            byte[] valueTLV = new byte[1 + getDERLengthSize(valueBytes.length) + valueBytes.length];
+            valueTLV[0] = 0x0C;
+            writeDERLengthTo(valueTLV, 1, valueBytes.length);
+            System.arraycopy(valueBytes, 0, valueTLV, 1 + getDERLengthSize(valueBytes.length), valueBytes.length);
+            byte[] seqContent = concat(oidBytes, valueTLV);
             ByteArrayOutputStream seqOut = new ByteArrayOutputStream();
-            writeOID(seqOut, getDN_Oid(attrType));
-            writeLengthPrefixed(seqOut, 0x0C, () -> seqOut.write(attrValue.getBytes()));
+            seqOut.write(0x31);
+            writeDERLength(seqOut, seqContent.length);
+            seqOut.write(seqContent);
             byte[] seqBytes = seqOut.toByteArray();
-            setOut.write(0x31);
-            writeDERLength(setOut, seqBytes.length);
             setOut.write(seqBytes);
         }
-        byte[] setBytes = setOut.toByteArray();
+        byte[] setContent = setOut.toByteArray();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(0x31);
-        writeDERLength(out, setBytes.length);
-        out.write(setBytes);
+        writeDERLength(out, setContent.length);
+        out.write(setContent);
         return out.toByteArray();
     }
 
-    private static int[] getDN_Oid(String type) {
+    private static int[] getDNOid(String type) {
         switch (type) {
             case "CN": return new int[]{2, 5, 4, 3};
             case "OU": return new int[]{2, 5, 4, 11};
@@ -218,7 +173,6 @@ public class ApkSignerUtil {
         StringBuilder sb = new StringBuilder();
         sb.append("Manifest-Version: 1.0\r\n");
         sb.append("Created-By: 1.0 (AppClone Signer)\r\n\r\n");
-
         for (Map.Entry<String, byte[]> e : entries.entrySet()) {
             byte[] digest = md.digest(e.getValue());
             sb.append("Name: ").append(e.getKey()).append("\r\n");
@@ -237,24 +191,23 @@ public class ApkSignerUtil {
           .append(Base64.getEncoder().encodeToString(md.digest(manifestBytes))).append("\r\n");
 
         String manifestStr = new String(manifestBytes, "UTF-8");
-        int firstSectionEnd = manifestStr.indexOf("\r\n\r\n");
-        if (firstSectionEnd > 0) {
-            byte[] mainDigest = md.digest(manifestStr.substring(0, firstSectionEnd).getBytes("UTF-8"));
+        int firstEnd = manifestStr.indexOf("\r\n\r\n");
+        if (firstEnd > 0) {
             sb.append("SHA-256-Digest-Manifest-Main-Attributes: ")
-              .append(Base64.getEncoder().encodeToString(mainDigest)).append("\r\n");
+              .append(Base64.getEncoder().encodeToString(
+                  md.digest(manifestStr.substring(0, firstEnd).getBytes("UTF-8")))).append("\r\n");
         }
         sb.append("\r\n");
-
-        for (String entryName : entries.keySet()) {
-            String sectionStart = "Name: " + entryName + "\r\n";
-            int idx = manifestStr.indexOf(sectionStart);
+        for (String name : entries.keySet()) {
+            String start = "Name: " + name + "\r\n";
+            int idx = manifestStr.indexOf(start);
             if (idx >= 0) {
-                int end = manifestStr.indexOf("\r\n\r\n", idx + sectionStart.length());
+                int end = manifestStr.indexOf("\r\n\r\n", idx + start.length());
                 if (end > idx) {
-                    sb.append("Name: ").append(entryName).append("\r\n");
-                    sb.append("SHA-256-Digest: ")
-                      .append(Base64.getEncoder().encodeToString(
-                          md.digest(manifestStr.substring(idx, end).getBytes("UTF-8")))).append("\r\n\r\n");
+                    sb.append("Name: ").append(name).append("\r\n");
+                    sb.append("SHA-256-Digest: ").append(
+                        Base64.getEncoder().encodeToString(
+                            md.digest(manifestStr.substring(idx, end).getBytes("UTF-8")))).append("\r\n\r\n");
                 }
             }
         }
@@ -262,8 +215,7 @@ public class ApkSignerUtil {
     }
 
     /**
-     * Create PKCS#7 signature block (CERT.RSA) using manual DER encoding.
-     * No BouncyCastle required - pure Java implementation.
+     * Create PKCS#7 signature block - pure Java DER encoding.
      */
     private static byte[] createPkcs7Signature(byte[] sfBytes, PrivateKey privateKey,
                                                  X509Certificate cert) throws Exception {
@@ -272,100 +224,68 @@ public class ApkSignerUtil {
         sig.update(sfBytes);
         byte[] signatureBytes = sig.sign();
 
-        // Build PKCS#7 SignedData:
-        // ContentInfo { OID(signedData), SignedData { version, digestAlgorithms,
-        //   encapContentInfo { id-data }, certificates, signerInfos } }
+        // --- Build SignedData content ---
+        ByteArrayOutputStream sd = new ByteArrayOutputStream();
+        // version
+        sd.write(new byte[]{0x02, 0x01, 0x01});
+        // digestAlgorithms: SET of AlgorithmIdentifier
+        byte[] digestAlg = buildAlgIdSeq(new int[]{2, 16, 840, 1, 101, 3, 4, 2, 1});
+        byte[] digestAlgSet = wrapTag(0x31, digestAlg);
+        sd.write(digestAlgSet);
+        // encapContentInfo: SEQUENCE { id-data, [0] EXPLICIT OCTET STRING }
+        ByteArrayOutputStream eci = new ByteArrayOutputStream();
+        eci.write(encodeOID(new int[]{1, 2, 840, 113549, 1, 7, 1}));
+        byte[] contentOctet = buildOctetString(sfBytes);
+        byte[] explicit0 = new byte[2 + contentOctet.length];
+        explicit0[0] = (byte) 0xA0;
+        writeDERLengthTo(explicit0, 1, contentOctet.length);
+        System.arraycopy(contentOctet, 0, explicit0, 2, contentOctet.length);
+        eci.write(explicit0);
+        byte[] eciSeq = wrapTag(0x30, eci.toByteArray());
+        sd.write(eciSeq);
+        // certificates: [0] EXPLICIT Certificate
+        byte[] certDer = cert.getEncoded();
+        byte[] certWrap = new byte[2 + certDer.length];
+        certWrap[0] = (byte) 0xA0;
+        writeDERLengthTo(certWrap, 1, certDer.length);
+        System.arraycopy(certDer, 0, certWrap, 2, certDer.length);
+        sd.write(certWrap);
+        // signerInfos: SET of SignerInfo
+        ByteArrayOutputStream si = new ByteArrayOutputStream();
+        // si.version
+        si.write(new byte[]{0x02, 0x01, 0x01});
+        // si.sid: IssuerAndSerialNumber SEQUENCE
+        ByteArrayOutputStream isan = new ByteArrayOutputStream();
+        byte[] issuerBytes = cert.getIssuerX500Principal().getEncoded();
+        isan.write(issuerBytes);
+        byte[] serial = cert.getSerialNumber().toByteArray();
+        isan.write(0x02);
+        writeDERLength(isan, serial.length);
+        isan.write(serial);
+        byte[] isanSeq = wrapTag(0x30, isan.toByteArray());
+        si.write(isanSeq);
+        // si.digestAlgorithm
+        si.write(buildAlgIdSeq(new int[]{2, 16, 840, 1, 101, 3, 4, 2, 1}));
+        // si.signatureAlgorithm
+        si.write(buildAlgIdSeq(new int[]{1, 2, 840, 113549, 1, 1, 11}));
+        // si.signature OCTET STRING
+        si.write(buildOctetString(signatureBytes));
+        byte[] signerInfoSet = wrapTag(0x31, si.toByteArray());
+        sd.write(signerInfoSet);
 
-        ByteArrayOutputStream outerContent = new ByteArrayOutputStream();
+        // Wrap SignedData in SEQUENCE
+        byte[] signedDataSeq = wrapTag(0x30, sd.toByteArray());
 
-        // version INTEGER 1
-        outerContent.write(0x02, 0x01, 0x01);
+        // ContentInfo: SEQUENCE { id-signedData, [0] EXPLICIT SignedData }
+        ByteArrayOutputStream ci = new ByteArrayOutputStream();
+        ci.write(encodeOID(new int[]{1, 2, 840, 113549, 1, 7, 2}));
+        byte[] sdExplicit = new byte[2 + signedDataSeq.length];
+        sdExplicit[0] = (byte) 0xA0;
+        writeDERLengthTo(sdExplicit, 1, signedDataSeq.length);
+        System.arraycopy(signedDataSeq, 0, sdExplicit, 2, signedDataSeq.length);
+        ci.write(sdExplicit);
 
-        // digestAlgorithms SET { AlgorithmIdentifier { SHA-256, NULL } }
-        ByteArrayOutputStream digestAlgSet = new ByteArrayOutputStream();
-        writeLengthPrefixed(digestAlgSet, 0x30, () -> {
-            writeOID(digestAlgSet, new int[]{2, 16, 840, 1, 101, 3, 4, 2, 1}); // SHA-256
-            digestAlgSet.write(0x05, 0x00); // NULL
-        });
-        outerContent.write(0x31); // SET
-        writeDERLength(outerContent, digestAlgSet.size());
-        outerContent.write(digestAlgSet.toByteArray());
-
-        // encapContentInfo SEQUENCE { OID(id-data), [0] EXPLICIT OCTET STRING(sfBytes) }
-        ByteArrayOutputStream encapContent = new ByteArrayOutputStream();
-        writeOID(encapContent, new int[]{1, 2, 840, 113549, 1, 7, 1}); // id-data
-        // [0] EXPLICIT content
-        encapContent.write(0xA0);
-        ByteArrayOutputStream contentWrap = new ByteArrayOutputStream();
-        contentWrap.write(0x04); // OCTET STRING
-        writeDERLength(contentWrap, sfBytes.length);
-        contentWrap.write(sfBytes);
-        writeDERLength(encapContent, contentWrap.size());
-        encapContent.write(contentWrap.toByteArray());
-        outerContent.write(0x30);
-        writeDERLength(outerContent, encapContent.size());
-        outerContent.write(encapContent.toByteArray());
-
-        // certificates [0] IMPLICIT EXPLICIT SET OF Certificate
-        byte[] certDer = cert.getEncoded(); // X.509 cert already in DER
-        outerContent.write(0xA0);
-        writeDERLength(outerContent, certDer.length);
-        outerContent.write(certDer);
-
-        // signerInfos SET { SignerInfo }
-        ByteArrayOutputStream signerInfo = new ByteArrayOutputStream();
-        // version INTEGER 1
-        signerInfo.write(0x02, 0x01, 0x01);
-        // sid: IssuerAndSerialNumber
-        writeLengthPrefixed(signerInfo, 0x30, () -> {
-            // issuer: GeneralName (certificate issuer)
-            signerInfo.write(cert.getIssuerX500Principal().getEncoded());
-            // serialNumber
-            byte[] serial = cert.getSerialNumber().toByteArray();
-            signerInfo.write(0x02);
-            writeDERLength(signerInfo, serial.length);
-            signerInfo.write(serial);
-        });
-        // digestAlgorithm
-        writeLengthPrefixed(signerInfo, 0x30, () -> {
-            writeOID(signerInfo, new int[]{2, 16, 840, 1, 101, 3, 4, 2, 1});
-            signerInfo.write(0x05, 0x00);
-        });
-        // signatureAlgorithm
-        writeLengthPrefixed(signerInfo, 0x30, () -> {
-            writeOID(signerInfo, new int[]{1, 2, 840, 113549, 1, 1, 11}); // sha256WithRSA
-            signerInfo.write(0x05, 0x00);
-        });
-        // signature OCTET STRING
-        signerInfo.write(0x04);
-        writeDERLength(signerInfo, signatureBytes.length);
-        signerInfo.write(signatureBytes);
-
-        // Wrap signerInfo in SET
-        outerContent.write(0x31);
-        writeDERLength(outerContent, signerInfo.size());
-        outerContent.write(signerInfo.toByteArray());
-
-        // Wrap in SEQUENCE for SignedData
-        ByteArrayOutputStream signedData = new ByteArrayOutputStream();
-        signedData.write(0x30);
-        writeDERLength(signedData, outerContent.size());
-        signedData.write(outerContent.toByteArray());
-
-        // Wrap in ContentInfo: SEQUENCE { OID(signedData), [0] EXPLICIT SignedData }
-        ByteArrayOutputStream contentInfo = new ByteArrayOutputStream();
-        writeOID(contentInfo, new int[]{1, 2, 840, 113549, 1, 7, 2}); // id-signedData
-        contentInfo.write(0xA0);
-        writeDERLength(contentInfo, signedData.size());
-        contentInfo.write(signedData.toByteArray());
-
-        // Wrap in outer SEQUENCE
-        ByteArrayOutputStream result = new ByteArrayOutputStream();
-        result.write(0x30);
-        writeDERLength(result, contentInfo.size());
-        result.write(contentInfo.toByteArray());
-
-        return result.toByteArray();
+        return wrapTag(0x30, ci.toByteArray());
     }
 
     private static void writeSignedZip(File outputApk, Map<String, byte[]> entries,
@@ -373,39 +293,76 @@ public class ApkSignerUtil {
                                         byte[] pkcs7Bytes) throws IOException {
         try (ZipOutputStream zos = new ZipOutputStream(
                 new BufferedOutputStream(new FileOutputStream(outputApk)))) {
-            ZipEntry mfEntry = new ZipEntry("META-INF/MANIFEST.MF");
-            zos.putNextEntry(mfEntry);
+            zos.putNextEntry(new ZipEntry("META-INF/MANIFEST.MF"));
             zos.write(manifestBytes);
             zos.closeEntry();
-
             for (Map.Entry<String, byte[]> e : entries.entrySet()) {
                 zos.putNextEntry(new ZipEntry(e.getKey()));
                 zos.write(e.getValue());
                 zos.closeEntry();
             }
-
             zos.putNextEntry(new ZipEntry("META-INF/" + SIGNER_NAME + ".SF"));
             zos.write(sfBytes);
             zos.closeEntry();
-
             zos.putNextEntry(new ZipEntry("META-INF/" + SIGNER_NAME + ".RSA"));
             zos.write(pkcs7Bytes);
             zos.closeEntry();
         }
     }
 
-    // --- DER encoding helpers ---
+    // --- DER Helpers ---
 
-    private static void writeOID(ByteArrayOutputStream out, int[] oid) throws IOException {
+    private static byte[] wrapTag(int tag, byte[] content) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(tag);
+        writeDERLength(out, content.length);
+        out.write(content);
+        return out.toByteArray();
+    }
+
+    private static byte[] buildAlgIdSeq(int[] oid) throws IOException {
+        byte[] oidBytes = encodeOID(oid);
+        byte[] nullBytes = new byte[]{0x05, 0x00}; // NULL
+        byte[] content = concat(oidBytes, nullBytes);
+        return wrapTag(0x30, content);
+    }
+
+    private static byte[] buildInteger(byte[] value) throws IOException {
+        // Ensure positive
+        if (value[0] < 0) {
+            byte[] padded = new byte[value.length + 1];
+            System.arraycopy(value, 0, padded, 1, value.length);
+            value = padded;
+        }
+        return wrapTag(0x02, value);
+    }
+
+    private static byte[] buildOctetString(byte[] data) throws IOException {
+        return wrapTag(0x04, data);
+    }
+
+    private static byte[] buildBitString(byte[] data) throws IOException {
+        byte[] padded = new byte[data.length + 1];
+        padded[0] = 0; // no unused bits
+        System.arraycopy(data, 0, padded, 1, data.length);
+        return wrapTag(0x03, padded);
+    }
+
+    private static byte[] buildUTCTime(Date date) throws IOException {
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyMMddHHmmss'Z'");
+        sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        byte[] timeBytes = sdf.format(date).getBytes();
+        return wrapTag(0x17, timeBytes);
+    }
+
+    private static byte[] encodeOID(int[] oid) throws IOException {
         ByteArrayOutputStream oidOut = new ByteArrayOutputStream();
         oidOut.write(encodeOIDFirst(oid[0], oid[1]));
         for (int i = 2; i < oid.length; i++) {
             encodeOIDComponent(oidOut, oid[i]);
         }
         byte[] oidBytes = oidOut.toByteArray();
-        out.write(0x06);
-        writeDERLength(out, oidBytes.length);
-        out.write(oidBytes);
+        return wrapTag(0x06, oidBytes);
     }
 
     private static int encodeOIDFirst(int a, int b) {
@@ -419,52 +376,58 @@ public class ApkSignerUtil {
             int numBytes = (32 - Integer.numberOfLeadingZeros(value) + 6) / 7;
             for (int i = numBytes - 1; i >= 0; i--) {
                 int shift = i * 7;
-                byte b = (byte) ((value >> shift) & 0x7F);
+                int b = (value >> shift) & 0x7F;
                 if (i > 0) b |= 0x80;
                 out.write(b);
             }
         }
     }
 
-    private static void writeUTCTime(ByteArrayOutputStream out, Date date) throws IOException {
-        String format = date.before(new Date(System.currentTimeMillis() - 2524608000000L))
-            ? "yyMMddHHmmss'Z'" : "yyMMddHHmmss'Z'";
-        if (date.before(new Date(2050010100000L))) format = "yyMMddHHmmss'Z'";
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyMMddHHmmss'Z'");
-        sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-        byte[] timeBytes = sdf.format(date).getBytes();
-        out.write(0x17);
-        writeDERLength(out, timeBytes.length);
-        out.write(timeBytes);
-    }
-
-    interface DERWriter { void write(ByteArrayOutputStream out) throws IOException; }
-
-    private static void writeLengthPrefixed(ByteArrayOutputStream out, int tag, DERWriter writer)
-            throws IOException {
-        ByteArrayOutputStream inner = new ByteArrayOutputStream();
-        writer.write(inner);
-        out.write(tag);
-        writeDERLength(out, inner.size());
-        out.write(inner.toByteArray());
-    }
-
     private static void writeDERLength(ByteArrayOutputStream out, int length) throws IOException {
+        byte[] buf = new byte[5];
+        int pos = writeDERLengthTo(buf, 0, length);
+        out.write(buf, 0, pos);
+    }
+
+    private static int writeDERLengthTo(byte[] buf, int pos, int length) {
         if (length < 128) {
-            out.write(length);
+            buf[pos] = (byte) length;
+            return pos + 1;
         } else if (length < 256) {
-            out.write(0x81);
-            out.write(length);
+            buf[pos] = (byte) 0x81;
+            buf[pos + 1] = (byte) length;
+            return pos + 2;
         } else if (length < 65536) {
-            out.write(0x82);
-            out.write((length >> 8) & 0xFF);
-            out.write(length & 0xFF);
+            buf[pos] = (byte) 0x82;
+            buf[pos + 1] = (byte) ((length >> 8) & 0xFF);
+            buf[pos + 2] = (byte) (length & 0xFF);
+            return pos + 3;
         } else {
-            out.write(0x83);
-            out.write((length >> 16) & 0xFF);
-            out.write((length >> 8) & 0xFF);
-            out.write(length & 0xFF);
+            buf[pos] = (byte) 0x83;
+            buf[pos + 1] = (byte) ((length >> 16) & 0xFF);
+            buf[pos + 2] = (byte) ((length >> 8) & 0xFF);
+            buf[pos + 3] = (byte) (length & 0xFF);
+            return pos + 4;
         }
+    }
+
+    private static int getDERLengthSize(int length) {
+        if (length < 128) return 1;
+        if (length < 256) return 2;
+        if (length < 65536) return 3;
+        return 4;
+    }
+
+    private static byte[] concat(byte[]... arrays) {
+        int total = 0;
+        for (byte[] a : arrays) total += a.length;
+        byte[] result = new byte[total];
+        int pos = 0;
+        for (byte[] a : arrays) {
+            System.arraycopy(a, 0, result, pos, a.length);
+            pos += a.length;
+        }
+        return result;
     }
 
     private static byte[] readStream(InputStream is) throws IOException {
